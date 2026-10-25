@@ -1,0 +1,162 @@
+{
+  "name": "Onlyturgie",
+  "guid": "asc.{F7A4C9AF-2D3B-4C8C-A8D9-2F3A4B5C6D7E}",
+  "version": "2.1.1",
+  "minVersion": "8.2.0",
+  "lstjo": {
+    "apiPath": "/apps/liturgie/api",
+    "sourceUrlTemplate": "{apiBase}/{source}?token={token}",
+    "tagMap": {},
+    "defaultSource": "chant",
+    "minChars": 1,
+    "maxResults": 20,
+    "completionScope": "full",
+    "helperWidth": 340,
+    "helperMaxWidth": 920,
+    "inlineItems": {
+      "chat": [
+        "Exemple 1 — mets une URL dans lstjo.sources ou des entrées dans lstjo.inlineItems.chat"
+      ]
+    },
+    "panel": {
+      "panelResizable": true,
+      "panelWidth": 520,
+      "panelHeight": 720,
+      "panelMinWidth": 500,
+      "panelMinHeight": 400,
+      "panelMaxWidth": 1600,
+      "panelMaxHeight": 2000,
+      "sourceId": "chant",
+      "pdfApiUrlTemplate": "{apiBase}/pdf?token={token}&hash={base64url}",
+      "pptApiUrlTemplate": "{apiBase}/ppt?token={token}&hash={base64url}",
+      "apiJsonUrlKey": "url",
+      "pdfUrlTemplate": "",
+      "pptUrlTemplate": "",
+      "pdfUrl": "",
+      "pptUrl": "",
+      "pptUseOfficeViewer": true,
+      "chantMatch": "exact",
+      "lineMode": "paragraph",
+      "refreshDebounceMs": 200
+    }
+  },
+  "variations": [
+    {
+      "name": "Onlyturgie",
+      "nameLocale": {
+        "fr": "Onlyturgie"
+      },
+      "description": "Autocomplétion JSON (assistant au curseur, comme le plugin Autocomplete Ascensio)",
+      "descriptionLocale": {
+        "fr": "Autocomplétion JSON : assistant de saisie lié au curseur."
+      },
+      "url": "index.html",
+      "icons": ["resources/light/icon.png", "resources/light/icon@2x.png"],
+      "icons2": [
+        {
+          "style": "light",
+          "100%": { "normal": "resources/light/icon.png" },
+          "125%": { "normal": "resources/light/icon@1.25x.png" },
+          "150%": { "normal": "resources/light/icon@1.5x.png" },
+          "175%": { "normal": "resources/light/icon@1.75x.png" },
+          "200%": { "normal": "resources/light/icon@2x.png" }
+        },
+        {
+          "style": "dark",
+          "100%": { "normal": "resources/dark/icon.png" },
+          "125%": { "normal": "resources/dark/icon@1.25x.png" },
+          "150%": { "normal": "resources/dark/icon@1.5x.png" },
+          "175%": { "normal": "resources/dark/icon@1.75x.png" },
+          "200%": { "normal": "resources/dark/icon@2x.png" }
+        }
+      ],
+      "isViewer": false,
+      "EditorsSupport": ["word", "cell", "slide"],
+      "type": "background",
+      "initDataType": "none",
+      "events": ["onInputHelperClear", "onInputHelperInput"]
+    },
+    {
+      "name": "Onlyturgie — panneau",
+      "nameLocale": {
+        "fr": "Onlyturgie — panneau"
+      },
+      "description": "Panneau latéral : PDF et présentation",
+      "descriptionLocale": {
+        "fr": "Panneau droit : aperçu PDF (haut) et présentation (bas), URLs dans lstjo.panel."
+      },
+      "url": "panel.html",
+      "icons": ["resources/light/icon.png", "resources/light/icon@2x.png"],
+      "icons2": [
+        {
+          "style": "light",
+          "100%": { "normal": "resources/light/icon.png" },
+          "125%": { "normal": "resources/light/icon@1.25x.png" },
+          "150%": { "normal": "resources/light/icon@1.5x.png" },
+          "175%": { "normal": "resources/light/icon@1.75x.png" },
+          "200%": { "normal": "resources/light/icon@2x.png" }
+        },
+        {
+          "style": "dark",
+          "100%": { "normal": "resources/dark/icon.png" },
+          "125%": { "normal": "resources/dark/icon@1.25x.png" },
+          "150%": { "normal": "resources/dark/icon@1.5x.png" },
+          "175%": { "normal": "resources/dark/icon@1.75x.png" },
+          "200%": { "normal": "resources/dark/icon@2x.png" }
+        }
+      ],
+      "isViewer": false,
+      "EditorsSupport": ["word", "cell", "slide"],
+      "type": "panelRight",
+      "initDataType": "none",
+      "events": ["onTargetPositionChanged"]
+    },
+    {
+      "name": "Onlyturgie — paramètres",
+      "nameLocale": {
+        "fr": "Onlyturgie — paramètres"
+      },
+      "description": "Jeton API liturgie (stockage local)",
+      "descriptionLocale": {
+        "fr": "Saisie du jeton API ; non inclus dans config.json."
+      },
+      "url": "settings.html",
+      "icons": ["resources/light/icon.png", "resources/light/icon@2x.png"],
+      "icons2": [
+        {
+          "style": "light",
+          "100%": { "normal": "resources/light/icon.png" },
+          "125%": { "normal": "resources/light/icon@1.25x.png" },
+          "150%": { "normal": "resources/light/icon@1.5x.png" },
+          "175%": { "normal": "resources/light/icon@1.75x.png" },
+          "200%": { "normal": "resources/light/icon@2x.png" }
+        },
+        {
+          "style": "dark",
+          "100%": { "normal": "resources/dark/icon.png" },
+          "125%": { "normal": "resources/dark/icon@1.25x.png" },
+          "150%": { "normal": "resources/dark/icon@1.5x.png" },
+          "175%": { "normal": "resources/dark/icon@1.75x.png" },
+          "200%": { "normal": "resources/dark/icon@2x.png" }
+        }
+      ],
+      "isViewer": true,
+      "EditorsSupport": ["word", "cell", "slide"],
+      "isVisual": true,
+      "isModal": true,
+      "isInsideMode": false,
+      "initDataType": "none",
+      "isUpdateOleOnResize": false,
+      "buttons": [
+        {
+          "text": "OK",
+          "primary": true,
+          "textLocale": {
+            "fr": "OK"
+          }
+        }
+      ],
+      "size": [440, 280]
+    }
+  ]
+}

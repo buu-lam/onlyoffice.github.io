@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Onlyturgie — paramètres</title>
+    <script src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.js"></script>
+    <script src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins-ui.js"></script>
+    <link rel="stylesheet" href="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.css" />
+    <script src="scripts/lstjo-runtime.js"></script>
+    <script src="scripts/settings.js"></script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, "Segoe UI", sans-serif;
+        font-size: 13px;
+        color: #222;
+        box-sizing: border-box;
+      }
+      body {
+        padding: 12px 14px;
+      }
+      label {
+        display: block;
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+      .field {
+        margin-bottom: 12px;
+      }
+      input[type="password"],
+      input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border: 1px solid #c8c8c8;
+        border-radius: 4px;
+      }
+      .hint {
+        margin-top: 8px;
+        color: #5c5c5c;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+      .template {
+        margin-top: 10px;
+        font-size: 11px;
+        color: #444;
+        word-break: break-all;
+        font-family: ui-monospace, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="field">
+      <label for="api-host">Hôte (origine du cloud)</label>
+      <input
+        id="api-host"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="https://cloud.example.fr"
+      />
+    </div>
+    <div class="field">
+      <label for="api-token">Jeton API liturgie</label>
+      <input id="api-token" type="password" autocomplete="off" spellcheck="false" />
+    </div>
+    <p class="hint">
+      Hôte et jeton sont enregistrés localement (localStorage). Les URLs des catalogues sont générées à partir du
+      modèle dans config.json ; la liste des sources (chant, kyrie, …) est fixe dans le plugin.
+    </p>
+    <p class="template" id="template-label"></p>
+  </body>
+</html>

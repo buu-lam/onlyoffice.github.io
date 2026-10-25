@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>LStJo — panneau</title>
+    <script src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.js"></script>
+    <script src="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins-ui.js"></script>
+    <link rel="stylesheet" href="https://onlyoffice.github.io/sdkjs-plugins/v1/plugins.css" />
+    <style>
+      :root {
+        --border: #c8c8c8;
+        --muted: #5c5c5c;
+        --bg-empty: #f5f5f5;
+        --split-gutter-h: 6px;
+      }
+      html {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        height: 100%;
+        min-height: 100%;
+        margin: 0;
+        overflow: hidden;
+        font-family: system-ui, "Segoe UI", sans-serif;
+        font-size: 12px;
+        color: #222;
+        background: #fff;
+        box-sizing: border-box;
+      }
+      /*
+        Statut (auto) + zone partagée (1fr) : même principe que l’ancienne grille 7fr/3fr,
+        fiable dans l’iframe OnlyOffice. Le ratio PDF/Présentation utilise des « fr », pas des %,
+        pour que le partage marche aussi quand le panneau est vide (pas besoin de PDF/PPT chargés).
+      */
+      #root {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        height: 100%;
+        min-height: 0;
+        box-sizing: border-box;
+      }
+      #split-wrap {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        /* 3fr / 2fr = 60 % / 40 % (hors barre de séparation) */
+        grid-template-rows: minmax(0, 3fr) var(--split-gutter-h) minmax(0, 2fr);
+        align-content: stretch;
+      }
+      #pane-pdf,
+      #pane-ppt {
+        min-height: 0;
+      }
+      #split-gutter {
+        background: linear-gradient(to bottom, #e8e8e8, #dedede);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        cursor: row-resize;
+        touch-action: none;
+        user-select: none;
+        box-sizing: border-box;
+      }
+      #split-gutter:hover {
+        background: linear-gradient(to bottom, #ddd, #d0d0d0);
+      }
+      #split-gutter.is-dragging {
+        background: #c8c8c8;
+      }
+      .pane {
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .pane-head {
+        flex: 0 0 auto;
+        padding: 4px 8px;
+        background: #fafafa;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .pane-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+        background: var(--bg-empty);
+      }
+      .pane-body iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: #fff;
+      }
+      .empty-msg {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 8px;
+        color: var(--muted);
+        box-sizing: border-box;
+      }
+      .panel-status {
+        padding: 4px 8px;
+        font-size: 11px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        background: #f0f0f0;
+        min-height: 1.2em;
+      }
+    </style>
+    <script src="scripts/lstjo-runtime.js"></script>
+    <script src="scripts/panel.js"></script>
+  </head>
+  <body>
+    <div id="root">
+      <div id="panel-status" class="panel-status" aria-live="polite"></div>
+      <div id="split-wrap">
+        <section class="pane" id="pane-pdf" aria-label="PDF">
+          <div class="pane-head">PDF</div>
+          <div class="pane-body">
+            <div class="empty-msg" id="empty-pdf">Chargement…</div>
+            <iframe id="iframe-pdf" title="Document PDF" hidden></iframe>
+          </div>
+        </section>
+        <div
+          id="split-gutter"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Redimensionner PDF et Présentation"
+        ></div>
+        <section class="pane" id="pane-ppt" aria-label="Présentation">
+          <div class="pane-head">Présentation</div>
+          <div class="pane-body">
+            <div class="empty-msg" id="empty-ppt">Chargement…</div>
+            <iframe id="iframe-ppt" title="Présentation" hidden></iframe>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

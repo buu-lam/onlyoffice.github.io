@@ -8,6 +8,7 @@
   var urlsBySource = {};
   var itemsBySource = {};
   var inputEventSeq = 0;
+  var settingsPluginWindow = null;
 
   function getLstjoConfig() {
     var p = window.Asc.plugin;
@@ -321,6 +322,58 @@
     return { w: width, h: height };
   }
 
+  function openOnlyturgieSettingsWindow() {
+    if (!window.Asc || !window.Asc.PluginWindow) return;
+    var variation = {
+      url: "settings.html",
+      description: "Jeton API liturgie (stockage local)",
+      descriptionLocale: {
+        fr: "Saisie du jeton API ; non inclus dans config.json."
+      },
+      type: "window",
+      isVisual: true,
+      isViewer: true,
+      initDataType: "none",
+      isUpdateOleOnResize: false,
+      EditorsSupport: ["word", "cell", "slide"],
+      buttons: [
+        {
+          text: "OK",
+          primary: true,
+          textLocale: {
+            fr: "OK"
+          }
+        }
+      ],
+      size: [440, 280]
+    };
+    if (!settingsPluginWindow) {
+      settingsPluginWindow = new window.Asc.PluginWindow();
+      settingsPluginWindow.attachEvent("onClose", function () {
+        if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
+          window.LstjoRuntime.syncFromEditorBridge();
+        }
+        rebuildStateFromConfigAndStorage();
+        bootstrapFetchRemoteSources().catch(function () {});
+      });
+    }
+    settingsPluginWindow.show(variation);
+  }
+
+  function registerSettingsContextMenu() {
+    if (window.lstjoSettingsMenuRegistered || !window.Asc || !window.Asc.ButtonContextMenu) {
+      return;
+    }
+    window.lstjoSettingsMenuRegistered = true;
+    var btn = new window.Asc.ButtonContextMenu();
+    btn.text = "Paramètres Onlyturgie";
+    btn.addCheckers("All");
+    btn.attachOnClick(function () {
+      openOnlyturgieSettingsWindow();
+    });
+    window.Asc.Buttons.registerContextMenu();
+  }
+
   async function bootstrapFetchRemoteSources() {
     var ids = Object.keys(urlsBySource);
     for (var i = 0; i < ids.length; i++) {
@@ -328,7 +381,9 @@
       var url = urlsBySource[sid];
       if (!url) continue;
       try {
-        var response = await fetch(url, { method: "GET" });
+        var response = window.LstjoRuntime && window.LstjoRuntime.fetchLiturgie
+          ? await window.LstjoRuntime.fetchLiturgie(url)
+          : await fetch(url, { method: "GET" });
         if (!response.ok) continue;
         var payload = await response.json();
         itemsBySource[sid] = normalizeData(payload);
@@ -343,6 +398,10 @@
     if (!window.lstjoPluginInit) {
       window.lstjoPluginInit = true;
 
+      if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
+        window.LstjoRuntime.syncFromEditorBridge();
+      }
+
       window.Asc.plugin.fullText = "";
       window.Asc.plugin.lastReplaceTarget = "";
       rebuildStateFromConfigAndStorage();
@@ -351,10 +410,15 @@
 
       window.Asc.plugin.createInputHelper();
       window.Asc.plugin.getInputHelper().createWindow();
+      registerSettingsContextMenu();
     }
   };
 
-  window.Asc.plugin.button = function () {
+  window.Asc.plugin.button = function (id, windowId) {
+    if (windowId) {
+      window.Asc.plugin.executeMethod("CloseWindow", [windowId]);
+      return;
+    }
     this.executeCommand("close", "");
   };
 

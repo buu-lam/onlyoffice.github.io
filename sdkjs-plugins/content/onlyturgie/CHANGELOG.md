@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.5
+
+- Ouverture des paramètres depuis le plugin background : entrée de menu contextuel « Paramètres Onlyturgie » (`Asc.PluginWindow` → `settings.html`, 440×280, OK).
+
 ## 2.1.4
 
 - Variations réordonnées : panneau (`panelRight`) en premier, puis autocomplétion (`background`), puis paramètres (`type: window`).

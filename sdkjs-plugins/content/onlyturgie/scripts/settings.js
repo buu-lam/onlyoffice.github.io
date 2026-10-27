@@ -9,6 +9,35 @@
     tokenField.style.display = mode === "nextcloud" ? "none" : "";
   }
 
+  function displayPluginVersion(version) {
+    var v = version ? String(version).trim() : "";
+    if (!v) v = "?";
+    var el = document.getElementById("plugin-version");
+    if (el) {
+      el.textContent = "Onlyturgie — version " + v;
+    }
+    document.title = "Onlyturgie v" + v + " — paramètres";
+  }
+
+  function loadPluginVersion(callback) {
+    var p = window.Asc && window.Asc.plugin;
+    if (p && p.version) {
+      callback(p.version);
+      return;
+    }
+    fetch("config.json", { method: "GET", cache: "no-store" })
+      .then(function (response) {
+        if (!response.ok) throw new Error("config");
+        return response.json();
+      })
+      .then(function (json) {
+        callback(json && json.version ? json.version : "?");
+      })
+      .catch(function () {
+        callback("?");
+      });
+  }
+
   function updateTemplateLabel() {
     var tplEl = document.getElementById("template-label");
     if (!tplEl || !window.LstjoRuntime) return;
@@ -27,6 +56,7 @@
   }
 
   window.Asc.plugin.init = function () {
+    loadPluginVersion(displayPluginVersion);
     var hostEl = document.getElementById("api-host");
     var tokenEl = document.getElementById("api-token");
     var modeEl = document.getElementById("auth-mode");

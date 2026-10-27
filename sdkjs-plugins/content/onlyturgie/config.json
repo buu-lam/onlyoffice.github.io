@@ -5,7 +5,7 @@
   },
   "offered": "LStJo",
   "guid": "asc.{F7A4C9AF-2D3B-4C8C-A8D9-2F3A4B5C6D7E}",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "minVersion": "8.2.0",
   "lstjo": {
     "apiPath": "/apps/liturgie/api",
@@ -132,13 +132,13 @@
       "events": ["onInputHelperClear", "onInputHelperInput"]
     },
     {
-      "name": "Onlyturgie — paramètres",
+      "name": "Onlyturgie — paramètres (v2.1.8)",
       "nameLocale": {
-        "fr": "Onlyturgie — paramètres"
+        "fr": "Onlyturgie — paramètres (v2.1.8)"
       },
-      "description": "Jeton API liturgie (stockage local)",
+      "description": "Onlyturgie v2.1.8 — jeton API liturgie (stockage local)",
       "descriptionLocale": {
-        "fr": "Saisie du jeton API ; non inclus dans config.json."
+        "fr": "Onlyturgie v2.1.8 — saisie du jeton API (localStorage)."
       },
       "url": "settings.html",
       "icons": ["resources/light/icon.png", "resources/light/icon@2x.png"],
@@ -174,7 +174,7 @@
           }
         }
       ],
-      "size": [440, 420]
+      "size": [440, 448]
     }
   ]
 }

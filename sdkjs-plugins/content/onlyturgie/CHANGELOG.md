@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.8
+
+- Version affichée en bandeau dans la fenêtre paramètres ; titre de variation et description du store incluent `v2.1.8` (l’écran d’installation ONLYOFFICE reste celui du gestionnaire, qui lit déjà `version` dans `config.json`).
+
 ## 2.1.7
 
 - Libellé du bouton de test : « Tester le catalogue chant » (sans guillemets, pour éviter une lecture « champ »).

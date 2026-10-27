@@ -43,7 +43,7 @@
 
 // #region Constants
 
-const storeVersion = '1.0.9';                                        // version of store (will change it when update something in store)
+const storeVersion = '1.0.10';                                       // version of store (will change it when update something in store)
 const isLocal = ( (window.AscDesktopEditor !== undefined) && (window.location.protocol.indexOf('file') !== -1) ); // desktop detecting
 const OOMarketplaceUrl = 'https://onlyoffice.github.io/';            // url to official store (for local version store in desktop)
 const OOIO = 'https://github.com/ONLYOFFICE/onlyoffice.github.io/';  // url to official github repository (for links and discussions)
@@ -833,6 +833,32 @@ function onClickDownload(guid, event) {
 }
 
 /**
+ * Recharge config.json depuis le store à l’installation (évite un config figé à l’ouverture du gestionnaire).
+ * @param {PluginInfo | undefined} plugin
+ * @returns {Promise<PluginInfo | undefined>}
+ */
+function fetchFreshPluginConfigForInstall(plugin) {
+	if (!plugin || !plugin.url) {
+		return Promise.resolve(plugin);
+	}
+	var confUrl = plugin.url;
+	var baseUrl = plugin.baseUrl;
+	return DataFetcher.makeRequest(confUrl, 'GET', null, null)
+		.then(function (response) {
+			/** @type {PluginInfo} */
+			var fresh = JSON.parse(response);
+			fresh.url = confUrl;
+			if (baseUrl) {
+				fresh.baseUrl = baseUrl;
+			}
+			return fresh;
+		})
+		.catch(function () {
+			return plugin;
+		});
+}
+
+/**
  * @param {string} guid 
  * @param {Event} event 
  */
@@ -856,7 +882,20 @@ function onClickInstall(guid, event) {
 	}
 	const config = plugin ? plugin : available && available.obj;
 	return Utils.waitForRepaint()
-		.then(function() { return MarketplacePluginService.doInstall(url, guid, config) })
+		.then(function () {
+			return plugin ? fetchFreshPluginConfigForInstall(plugin) : Promise.resolve(config);
+		})
+		.then(function (freshConfig) {
+			var installConfig = freshConfig || config;
+			var installUrl =
+				installConfig && installConfig.url
+					? installConfig.url
+					: url;
+			if (plugin && freshConfig) {
+				Object.assign(plugin, freshConfig);
+			}
+			return MarketplacePluginService.doInstall(installUrl, guid, installConfig);
+		})
 		.then(function(result) {
 			if (!result) {
 				UI.toggleLoader(false);
@@ -878,7 +917,16 @@ function onClickUpdate(guid, event) {
 		return;
 	}
 	return Utils.waitForRepaint()
-		.then(function() { return MarketplacePluginService.doUpdate(guid, plugin) })
+		.then(function () {
+			return fetchFreshPluginConfigForInstall(plugin);
+		})
+		.then(function (freshConfig) {
+			var updatePlugin = freshConfig || plugin;
+			if (freshConfig) {
+				Object.assign(plugin, freshConfig);
+			}
+			return MarketplacePluginService.doUpdate(guid, updatePlugin);
+		})
 		.then(function(result) {
 			if (!result) {
 				UI.toggleLoader(false);

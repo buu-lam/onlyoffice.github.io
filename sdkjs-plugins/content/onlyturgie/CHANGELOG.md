@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.12
+
+- Libellés de variation paramètres sans version figée (évite l’affichage « v2.1.8 » dans le menu).
+- Store buu-lam : rechargement de `config.json` à l’install / mise à jour (`fetchFreshPluginConfigForInstall`).
+
 ## 2.1.11
 
 - Panneau : cache `lastSettledResolve` appliqué avant l’invalidation `resolveSeq` ; scripts `panel.js` / `lstjo-runtime.js` avec `?v=2.1.11` pour limiter le cache navigateur.

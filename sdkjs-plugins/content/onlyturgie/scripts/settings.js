@@ -1,36 +1,116 @@
 (function () {
   "use strict";
 
+  function updateTokenFieldVisibility() {
+    var modeEl = document.getElementById("auth-mode");
+    var tokenField = document.getElementById("token-field");
+    if (!modeEl || !tokenField) return;
+    var mode = modeEl.value;
+    tokenField.style.display = mode === "nextcloud" ? "none" : "";
+  }
+
+  function updateTemplateLabel() {
+    var tplEl = document.getElementById("template-label");
+    if (!tplEl || !window.LstjoRuntime) return;
+    var path = window.LstjoRuntime.getApiPath();
+    var tpl = window.LstjoRuntime.getSourceUrlTemplate();
+    var mode = window.LstjoRuntime.getEffectiveAuthMode
+      ? window.LstjoRuntime.getEffectiveAuthMode()
+      : "token";
+    tplEl.textContent =
+      "Mode effectif : " +
+      mode +
+      " — modèle source : " +
+      tpl +
+      " — apiBase = {hôte}" +
+      path;
+  }
+
   window.Asc.plugin.init = function () {
     var hostEl = document.getElementById("api-host");
     var tokenEl = document.getElementById("api-token");
-    var tplEl = document.getElementById("template-label");
+    var modeEl = document.getElementById("auth-mode");
     if (hostEl) {
       hostEl.value = window.LstjoRuntime.getApiHost();
     }
     if (tokenEl) {
       tokenEl.value = window.LstjoRuntime.getApiToken();
     }
-    if (tplEl) {
-      var path = window.LstjoRuntime.getApiPath();
-      var tpl = window.LstjoRuntime.getSourceUrlTemplate();
-      tplEl.textContent =
-        "Modèle source : " +
-        tpl +
-        " — apiBase = {hôte}" +
-        path +
-        " (ex. source « chant » → …/api/chant?token=…)";
+    if (modeEl) {
+      var stored = window.LstjoRuntime.getAuthMode();
+      modeEl.value = stored || "auto";
+      modeEl.addEventListener("change", function () {
+        updateTokenFieldVisibility();
+        updateTemplateLabel();
+      });
+    }
+    updateTokenFieldVisibility();
+    updateTemplateLabel();
+
+    var testBtn = document.getElementById("test-chant-btn");
+    if (testBtn) {
+      testBtn.addEventListener("click", function () {
+        var hostEl = document.getElementById("api-host");
+        var tokenEl = document.getElementById("api-token");
+        var modeEl = document.getElementById("auth-mode");
+        if (hostEl) window.LstjoRuntime.setApiHost(hostEl.value);
+        if (tokenEl) window.LstjoRuntime.setApiToken(tokenEl.value);
+        if (modeEl) window.LstjoRuntime.setAuthMode(modeEl.value);
+        updateTemplateLabel();
+
+        var out = document.getElementById("test-result");
+        testBtn.disabled = true;
+        if (out) out.textContent = "Requête en cours…";
+        window.LstjoRuntime.testCatalogSource("chant")
+          .then(function (r) {
+            if (!out) return;
+            if (r.ok) {
+              out.textContent =
+                "OK HTTP " +
+                r.status +
+                " — " +
+                r.count +
+                " entrée(s)\nMode : " +
+                r.mode +
+                "\napiBase : " +
+                r.apiBase +
+                "\nURL : " +
+                r.url;
+            } else {
+              out.textContent =
+                "Échec\nMode : " +
+                (r.mode || "?") +
+                "\napiBase : " +
+                (r.apiBase || "(vide)") +
+                "\nURL : " +
+                (r.url || "(vide)") +
+                (r.status ? "\nHTTP " + r.status : "") +
+                "\n" +
+                (r.error || "erreur inconnue");
+            }
+          })
+          .finally(function () {
+            testBtn.disabled = false;
+          });
+      });
     }
   };
 
   window.Asc.plugin.button = function () {
     var hostEl = document.getElementById("api-host");
     var tokenEl = document.getElementById("api-token");
+    var modeEl = document.getElementById("auth-mode");
     if (hostEl) {
       window.LstjoRuntime.setApiHost(hostEl.value);
     }
     if (tokenEl) {
       window.LstjoRuntime.setApiToken(tokenEl.value);
+    }
+    if (modeEl) {
+      window.LstjoRuntime.setAuthMode(modeEl.value);
+    }
+    if (window.LstjoRuntime.notifySettingsSaved) {
+      window.LstjoRuntime.notifySettingsSaved();
     }
     this.executeCommand("close", "");
   };

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.6
+
+- Paramètres : bouton « Tester le catalogue chant » (résultat HTTP / nombre d’entrées / erreur).
+- Après OK : `notifySettingsSaved` (postMessage + `sendToPlugin`) pour recharger les catalogues dans le background sans F5.
+- Précision : le localStorage des réglages est celui de l’iframe plugin (pas la page Nextcloud).
+
 ## 2.1.5
 
 - Ouverture des paramètres depuis le plugin background : entrée de menu contextuel « Paramètres Onlyturgie » (`Asc.PluginWindow` → `settings.html`, 440×280, OK).

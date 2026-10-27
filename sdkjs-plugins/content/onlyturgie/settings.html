@@ -30,7 +30,8 @@
         margin-bottom: 12px;
       }
       input[type="password"],
-      input[type="text"] {
+      input[type="text"],
+      select {
         width: 100%;
         box-sizing: border-box;
         padding: 6px 8px;
@@ -50,9 +51,49 @@
         word-break: break-all;
         font-family: ui-monospace, Consolas, monospace;
       }
+      .test-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      button.test-btn {
+        padding: 6px 10px;
+        border: 1px solid #c8c8c8;
+        border-radius: 4px;
+        background: #f5f5f5;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button.test-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      #test-result {
+        margin: 0;
+        padding: 8px;
+        font-size: 11px;
+        line-height: 1.35;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, Consolas, monospace;
+        background: #f8f8f8;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        max-height: 120px;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
+    <div class="field">
+      <label for="auth-mode">Authentification API</label>
+      <select id="auth-mode">
+        <option value="auto">Automatique (jeton si renseigné, sinon session Nextcloud)</option>
+        <option value="token">Jeton API (ONLYOFFICE Desktop, Document Server)</option>
+        <option value="nextcloud">Session Nextcloud (utilisateur connecté)</option>
+      </select>
+    </div>
     <div class="field">
       <label for="api-host">Hôte (origine du cloud)</label>
       <input
@@ -63,13 +104,18 @@
         placeholder="https://cloud.example.fr"
       />
     </div>
-    <div class="field">
+    <div class="field" id="token-field">
       <label for="api-token">Jeton API liturgie</label>
       <input id="api-token" type="password" autocomplete="off" spellcheck="false" />
     </div>
+    <div class="test-row">
+      <button type="button" class="test-btn" id="test-chant-btn">Tester le catalogue « chant »</button>
+    </div>
+    <pre id="test-result" aria-live="polite">Cliquez sur Tester pour un GET API (origine du plugin → Nextcloud).</pre>
     <p class="hint">
-      Hôte et jeton sont enregistrés localement (localStorage). Les URLs des catalogues sont générées à partir du
-      modèle dans config.json ; la liste des sources (chant, kyrie, …) est fixe dans le plugin.
+      Hôte, mode et jeton sont enregistrés dans le localStorage de l’iframe du plugin (origine GitHub Pages ou Document
+      Server), pas dans la page Nextcloud. En mode session, les cookies Nextcloud ne partent souvent pas depuis
+      l’éditeur hébergé ailleurs — préférez le mode jeton.
     </p>
     <p class="template" id="template-label"></p>
   </body>

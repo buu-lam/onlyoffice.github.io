@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.9
+
+- Background : `lstjoReloadAutocompleteFromStorage`, `refreshAfterSettingsSave`, écoute `onlyturgie.settingsSaved` ; synchro catalogues après OK paramètres.
+- `plugin-settings-bridge.js` : ne court-circuite plus le rechargement des catalogues.
+
 ## 2.1.8
 
 - Version affichée en bandeau dans la fenêtre paramètres ; titre de variation et description du store incluent `v2.1.8` (l’écran d’installation ONLYOFFICE reste celui du gestionnaire, qui lit déjà `version` dans `config.json`).

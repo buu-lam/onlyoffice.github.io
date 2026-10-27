@@ -71,11 +71,11 @@
   }
 
   function onSettingsSaved() {
-    if (typeof window.lstjoReloadAutocompleteFromStorage === "function") {
-      window.lstjoReloadAutocompleteFromStorage();
-      return;
-    }
-    refreshCatalogsInBackground().catch(function () {});
+    refreshCatalogsInBackground().catch(function () {
+      if (typeof window.lstjoReloadAutocompleteFromStorage === "function") {
+        window.lstjoReloadAutocompleteFromStorage();
+      }
+    });
   }
 
   if (!window.lstjoSettingsSavedListener) {

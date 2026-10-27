@@ -5,7 +5,7 @@
   },
   "offered": "LStJo",
   "guid": "asc.{F7A4C9AF-2D3B-4C8C-A8D9-2F3A4B5C6D7E}",
-  "version": "2.1.9",
+  "version": "2.1.10",
   "minVersion": "8.2.0",
   "lstjo": {
     "apiPath": "/apps/liturgie/api",

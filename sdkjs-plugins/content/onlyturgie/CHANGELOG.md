@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.10
+
+- Panneau : mémorisation du dernier résultat (ligne + chant) pour ne pas relancer les appels PDF/PPT quand `onTargetPositionChanged` se répète (fin du clignotement Chargement / erreur API).
+
 ## 2.1.9
 
 - Background : `lstjoReloadAutocompleteFromStorage`, `refreshAfterSettingsSave`, écoute `onlyturgie.settingsSaved` ; synchro catalogues après OK paramètres.

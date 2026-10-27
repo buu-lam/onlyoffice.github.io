@@ -13,6 +13,9 @@
   var chantStatusEl = null;
   /** Incrémenté à chaque résolution pour ignorer les réponses API obsolètes. */
   var resolveSeq = 0;
+  /** Dernier contexte (ligne + chant) déjà résolu — évite les relances si onTargetPositionChanged boucle. */
+  var lastSettledResolveKey = "";
+  var lastSettledResolve = null;
 
   function getLstjoConfig() {
     var p = window.Asc.plugin;
@@ -164,7 +167,9 @@
     }
 
     try {
-      var response = await fetch(url, { method: "GET" });
+      var response = window.LstjoRuntime && window.LstjoRuntime.fetchLiturgie
+        ? await window.LstjoRuntime.fetchLiturgie(url)
+        : await fetch(url, { method: "GET" });
       if (!response.ok) return mergeChantList(cfg, sourceId, []);
       var payload = await response.json();
       return mergeChantList(cfg, sourceId, normalizeData(payload));
@@ -241,7 +246,15 @@
   function fetchUrlFromApi(apiTemplate, chantName, jsonUrlKey) {
     var apiUrl = applyUrlTemplate(apiTemplate, chantName);
     if (!apiUrl) return Promise.resolve("");
-    return fetch(apiUrl, { method: "GET", credentials: "omit" })
+    var fetchFn =
+      window.LstjoRuntime && typeof window.LstjoRuntime.fetchLiturgie === "function"
+        ? function (u) {
+            return window.LstjoRuntime.fetchLiturgie(u);
+          }
+        : function (u) {
+            return fetch(u, { method: "GET", credentials: "omit" });
+          };
+    return fetchFn(apiUrl)
       .then(function (response) {
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.json();
@@ -414,6 +427,21 @@
     if (chantStatusEl) chantStatusEl.textContent = text || "";
   }
 
+  function buildResolveKey(lineText, chant) {
+    return normalizeForMatch(lineText) + "\x1e" + String(chant || "");
+  }
+
+  function applySettledResolve(snapshot) {
+    if (!snapshot) return;
+    if (snapshot.statusText) setStatus(snapshot.statusText);
+    if (snapshot.pdfEmptyMsg) setEmptyMessage("pdf", snapshot.pdfEmptyMsg);
+    if (snapshot.pptEmptyMsg) setEmptyMessage("ppt", snapshot.pptEmptyMsg);
+    bindPane("pdf", snapshot.pdfUrl || "");
+    bindPane("ppt", snapshot.pptUrl || "", function (u) {
+      return resolvePptIframeSrc(u, getPanelCfg().pptUseOfficeViewer !== false);
+    });
+  }
+
   function resolveUrlsForPanels() {
     var cfg = getLstjoConfig();
     var panel = (cfg && cfg.panel) || {};
@@ -432,12 +460,26 @@
     var sourceId = typeof panel.sourceId === "string" && panel.sourceId ? panel.sourceId : "chant";
     var chantsSourceUrl = resolveChantsSourceUrl(cfg, sourceId);
     if (window.LstjoRuntime && !window.LstjoRuntime.hasApiCredentials()) {
-      setStatus("Ouvrez « Onlyturgie — paramètres » et renseignez l’hôte et le jeton API.");
+      setStatus(
+        window.LstjoRuntime.getCredentialsStatusMessage
+          ? window.LstjoRuntime.getCredentialsStatusMessage()
+          : "Ouvrez « Onlyturgie — paramètres » et renseignez l’hôte et le jeton API."
+      );
     }
     // Si les templates PDF/PPT ne sont pas renseignés mais que l'URL du catalogue (ex. /api/chant) est connue,
     // on les reconstruit automatiquement via le même token.
-    if (!pdfApiTpl) pdfApiTpl = inferApiUrlTemplateFromChantsUrl(chantsSourceUrl, "pdf");
-    if (!pptApiTpl) pptApiTpl = inferApiUrlTemplateFromChantsUrl(chantsSourceUrl, "ppt");
+    if (!pdfApiTpl) {
+      pdfApiTpl =
+        window.LstjoRuntime && window.LstjoRuntime.inferPanelApiUrlTemplateFromCatalogUrl
+          ? window.LstjoRuntime.inferPanelApiUrlTemplateFromCatalogUrl(chantsSourceUrl, "pdf", cfg)
+          : inferApiUrlTemplateFromChantsUrl(chantsSourceUrl, "pdf");
+    }
+    if (!pptApiTpl) {
+      pptApiTpl =
+        window.LstjoRuntime && window.LstjoRuntime.inferPanelApiUrlTemplateFromCatalogUrl
+          ? window.LstjoRuntime.inferPanelApiUrlTemplateFromCatalogUrl(chantsSourceUrl, "ppt", cfg)
+          : inferApiUrlTemplateFromChantsUrl(chantsSourceUrl, "ppt");
+    }
     var jsonUrlKey =
       typeof panel.apiJsonUrlKey === "string" && panel.apiJsonUrlKey.trim()
         ? panel.apiJsonUrlKey.trim()
@@ -474,15 +516,34 @@
       var chant = findMatchingChant(lineText, chantList, chantMatch);
 
       if (!chant) {
-        setStatus(
-          lineText
-            ? "Aucun chant reconnu sur cette ligne." + (chantList.length ? "" : " (liste vide — vérifiez la source dans lstjo.panel.)")
-            : "Placez le curseur sur une ligne dont le nom d’un chant est dans la liste."
-        );
+        var noChantKey = buildResolveKey(lineText, "");
+        if (noChantKey === lastSettledResolveKey && lastSettledResolve && lastSettledResolve.noChant) {
+          applySettledResolve(lastSettledResolve);
+          return;
+        }
+        var noChantStatus = lineText
+          ? "Aucun chant reconnu sur cette ligne." + (chantList.length ? "" : " (liste vide — vérifiez la source dans lstjo.panel.)")
+          : "Placez le curseur sur une ligne dont le nom d’un chant est dans la liste.";
+        setStatus(noChantStatus);
         setEmptyMessage("pdf", "Aucun chant reconnu sur cette ligne.");
         setEmptyMessage("ppt", "Aucun chant reconnu sur cette ligne.");
         bindPane("pdf", "");
         bindPane("ppt", "");
+        lastSettledResolveKey = noChantKey;
+        lastSettledResolve = {
+          noChant: true,
+          statusText: noChantStatus,
+          pdfUrl: "",
+          pptUrl: "",
+          pdfEmptyMsg: "Aucun chant reconnu sur cette ligne.",
+          pptEmptyMsg: "Aucun chant reconnu sur cette ligne.",
+        };
+        return;
+      }
+
+      var resolveKey = buildResolveKey(lineText, chant);
+      if (resolveKey === lastSettledResolveKey && lastSettledResolve && !lastSettledResolve.noChant) {
+        applySettledResolve(lastSettledResolve);
         return;
       }
 
@@ -533,24 +594,42 @@
         var pdfUrl = pair[0] || "";
         var pptUrl = pair[1] || "";
 
+        var pdfEmptyMsg = "";
+        var pptEmptyMsg = "";
         if (!pdfUrl) {
           if (needPdfApi) {
-            setEmptyMessage("pdf", "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.");
+            pdfEmptyMsg = "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.";
+            setEmptyMessage("pdf", pdfEmptyMsg);
           } else if (needPdfDirect) {
-            setEmptyMessage("pdf", "URL PDF vide (modèle).");
+            pdfEmptyMsg = "URL PDF vide (modèle).";
+            setEmptyMessage("pdf", pdfEmptyMsg);
           } else {
-            setEmptyMessage("pdf", "PDF non configuré (pdfApiUrlTemplate / pdfUrlTemplate vides).");
+            pdfEmptyMsg = "PDF non configuré (pdfApiUrlTemplate / pdfUrlTemplate vides).";
+            setEmptyMessage("pdf", pdfEmptyMsg);
           }
         }
         if (!pptUrl) {
           if (needPptApi) {
-            setEmptyMessage("ppt", "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.");
+            pptEmptyMsg = "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.";
+            setEmptyMessage("ppt", pptEmptyMsg);
           } else if (needPptDirect) {
-            setEmptyMessage("ppt", "URL présentation vide (modèle).");
+            pptEmptyMsg = "URL présentation vide (modèle).";
+            setEmptyMessage("ppt", pptEmptyMsg);
           } else {
-            setEmptyMessage("ppt", "Présentation non configurée (pptApiUrlTemplate / pptUrlTemplate vides).");
+            pptEmptyMsg = "Présentation non configurée (pptApiUrlTemplate / pptUrlTemplate vides).";
+            setEmptyMessage("ppt", pptEmptyMsg);
           }
         }
+
+        lastSettledResolveKey = resolveKey;
+        lastSettledResolve = {
+          noChant: false,
+          statusText: "Chant : " + chant,
+          pdfUrl: pdfUrl,
+          pptUrl: pptUrl,
+          pdfEmptyMsg: pdfEmptyMsg,
+          pptEmptyMsg: pptEmptyMsg,
+        };
 
         applyPanes(pdfUrl, pptUrl);
       });
@@ -665,8 +744,14 @@
 
   window.Asc.plugin.init = function () {
     chantStatusEl = document.getElementById("panel-status");
+    lastSettledResolveKey = "";
+    lastSettledResolve = null;
     applyPanelWindowSize();
     initSplitGutter();
+
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
+      window.LstjoRuntime.syncFromEditorBridge();
+    }
 
     var cfg = getLstjoConfig();
     loadChantList(cfg)

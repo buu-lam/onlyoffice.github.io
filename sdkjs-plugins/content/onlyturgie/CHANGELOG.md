@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.4
+
+- Variations réordonnées : panneau (`panelRight`) en premier, puis autocomplétion (`background`), puis paramètres (`type: window`).
+- `isVisual: false` sur le background ; métadonnées `store` sur la variation panneau.
+
+## 2.1.3
+
+- Double mode d’auth : jeton API (Desktop) ou session Nextcloud (`authMode`, URLs sans `?token=`, `fetch` avec cookies).
+- Paramètres : choix Automatique / Jeton / Session Nextcloud.
+
 ## 2.1.1
 
 - URLs des catalogues via modèle (`sourceUrlTemplate`) et liste de sources intégrée.

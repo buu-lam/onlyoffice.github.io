@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.7
+
+- Libellé du bouton de test : « Tester le catalogue chant » (sans guillemets, pour éviter une lecture « champ »).
+
 ## 2.1.6
 
 - Paramètres : bouton « Tester le catalogue chant » (résultat HTTP / nombre d’entrées / erreur).

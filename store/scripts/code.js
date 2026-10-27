@@ -43,7 +43,7 @@
 
 // #region Constants
 
-const storeVersion = '1.0.10';                                       // version of store (will change it when update something in store)
+const storeVersion = '1.0.11';                                       // version of store (will change it when update something in store)
 const isLocal = ( (window.AscDesktopEditor !== undefined) && (window.location.protocol.indexOf('file') !== -1) ); // desktop detecting
 const OOMarketplaceUrl = 'https://onlyoffice.github.io/';            // url to official store (for local version store in desktop)
 const OOIO = 'https://github.com/ONLYOFFICE/onlyoffice.github.io/';  // url to official github repository (for links and discussions)

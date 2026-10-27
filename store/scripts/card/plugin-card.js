@@ -521,16 +521,47 @@ const PluginCard = {
         PluginCardUI.toggleLoader(true, 'Installation');
         return Utils.waitForRepaint().then(function() { self._doInstall() });
     },
+    _fetchFreshConfigForInstall: function() {
+        var plugin = this.config;
+        if (typeof fetchFreshPluginConfigForInstall === 'function') {
+            return fetchFreshPluginConfigForInstall(plugin);
+        }
+        if (!plugin || !plugin.url) {
+            return Promise.resolve(plugin);
+        }
+        var confUrl = plugin.url;
+        var baseUrl = plugin.baseUrl;
+        return DataFetcher.makeRequest(confUrl, 'GET', null, null)
+            .then(function (response) {
+                /** @type {PluginInfo} */
+                var fresh = JSON.parse(response);
+                fresh.url = confUrl;
+                if (baseUrl) {
+                    fresh.baseUrl = baseUrl;
+                }
+                return fresh;
+            })
+            .catch(function () {
+                return plugin;
+            });
+    },
     _doInstall: function() {
         if (!this.plugin && !this.available) {
             // if we are here if means that plugin tab is opened, plugin is uninstalled and we don't have internet connection
             this.onClickClose();
         }
 
-        const url = this.config.url;
+        const self = this;
         const guid = this.config.guid;
 
-        return MarketplacePluginService.doInstall(url, guid, this.config).then(function (message) {
+        return this._fetchFreshConfigForInstall().then(function (freshConfig) {
+            var installConfig = freshConfig || self.config;
+            if (freshConfig) {
+                Object.assign(self.config, freshConfig);
+            }
+            const url = installConfig.url;
+            return MarketplacePluginService.doInstall(url, guid, installConfig);
+        }).then(function (message) {
             PluginCardUI.toggleLoader(false);
             if (!message || !message.guid) {
                 return;
@@ -550,7 +581,13 @@ const PluginCard = {
     _doUpdate: function() {
         const self = this;
         const guid = this.config.guid;
-        return MarketplacePluginService.doUpdate(guid, this.config).then(function (message) {
+        return this._fetchFreshConfigForInstall().then(function (freshConfig) {
+            var updatePlugin = freshConfig || self.config;
+            if (freshConfig) {
+                Object.assign(self.config, freshConfig);
+            }
+            return MarketplacePluginService.doUpdate(guid, updatePlugin);
+        }).then(function (message) {
             PluginCardUI.toggleLoader(false);
             if (!message || !message.guid) {
                 return;

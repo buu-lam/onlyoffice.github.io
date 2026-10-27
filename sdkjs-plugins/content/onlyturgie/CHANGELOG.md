@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.11
+
+- Panneau : cache `lastSettledResolve` appliqué avant l’invalidation `resolveSeq` ; scripts `panel.js` / `lstjo-runtime.js` avec `?v=2.1.11` pour limiter le cache navigateur.
+
 ## 2.1.10
 
 - Panneau : mémorisation du dernier résultat (ligne + chant) pour ne pas relancer les appels PDF/PPT quand `onTargetPositionChanged` se répète (fin du clignotement Chargement / erreur API).

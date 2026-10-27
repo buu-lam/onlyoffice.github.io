@@ -510,8 +510,6 @@
     var mySeq = ++resolveSeq;
 
     getCursorText(function (lineText) {
-      if (mySeq !== resolveSeq) return;
-
       var chantMatch = panel.chantMatch === "contains" ? "contains" : "exact";
       var chant = findMatchingChant(lineText, chantList, chantMatch);
 
@@ -521,6 +519,7 @@
           applySettledResolve(lastSettledResolve);
           return;
         }
+        if (mySeq !== resolveSeq) return;
         var noChantStatus = lineText
           ? "Aucun chant reconnu sur cette ligne." + (chantList.length ? "" : " (liste vide — vérifiez la source dans lstjo.panel.)")
           : "Placez le curseur sur une ligne dont le nom d’un chant est dans la liste.";
@@ -546,6 +545,8 @@
         applySettledResolve(lastSettledResolve);
         return;
       }
+
+      if (mySeq !== resolveSeq) return;
 
       setStatus("Chant : " + chant);
 

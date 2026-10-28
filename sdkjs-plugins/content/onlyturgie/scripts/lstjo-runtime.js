@@ -323,6 +323,64 @@
     return s.trim();
   }
 
+  function slugifyChantName(s) {
+    var t = String(s);
+    try {
+      t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    } catch (e) {
+      /* ignore */
+    }
+    return t
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  }
+
+  function base64EncodeUtf8(s) {
+    var t = String(s);
+    try {
+      return btoa(unescape(encodeURIComponent(t)));
+    } catch (e) {
+      try {
+        return btoa(unescape(encodeURIComponent(slugifyChantName(t))));
+      } catch (e2) {
+        return "";
+      }
+    }
+  }
+
+  /** Base64 URL-safe du nom de dossier chant (UTF-8). Ne pas préfixer avec encodeURIComponent. */
+  function base64UrlEncodeChantName(s) {
+    var b64 = base64EncodeUtf8(s);
+    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  /**
+   * Remplace {chant}, {slug}, {encoded}, {base64}, {base64url} pour PDF/PPT.
+   * {base64url} = base64 URL-safe du nom brut (API liturgie hash=).
+   */
+  function applyChantUrlPlaceholders(template, chantName) {
+    if (!template) return "";
+    var trimmed = String(chantName).trim();
+    return String(template).replace(/\{(base64url|base64|encoded|slug|chant)\}/g, function (_, key) {
+      switch (key) {
+        case "base64url":
+          return base64UrlEncodeChantName(trimmed);
+        case "base64":
+          return base64EncodeUtf8(trimmed);
+        case "encoded":
+          return encodeURIComponent(trimmed);
+        case "slug":
+          return slugifyChantName(trimmed);
+        case "chant":
+          return trimmed;
+        default:
+          return "";
+      }
+    });
+  }
+
   function resolveSourceSegment(cfg, sourceId) {
     var sources = (cfg && cfg.sources) || {};
     if (sources && typeof sources === "object" && !Array.isArray(sources)) {
@@ -621,6 +679,8 @@
     resolveSourceUrl: resolveSourceUrl,
     resolveAllSourceUrls: resolveAllSourceUrls,
     resolvePanelApiTemplate: resolvePanelApiTemplate,
+    applyChantUrlPlaceholders: applyChantUrlPlaceholders,
+    base64UrlEncodeChantName: base64UrlEncodeChantName,
     inferPanelApiUrlTemplateFromCatalogUrl: inferPanelApiUrlTemplateFromCatalogUrl,
     hasApiCredentials: hasApiCredentials,
     getCredentialsStatusMessage: getCredentialsStatusMessage,

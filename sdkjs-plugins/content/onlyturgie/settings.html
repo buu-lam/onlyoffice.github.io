@@ -82,18 +82,26 @@
         cursor: wait;
       }
       #test-result {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
         margin: 0;
         padding: 8px;
         font-size: 11px;
         line-height: 1.35;
+        color: #222;
         white-space: pre-wrap;
         word-break: break-word;
+        overflow-wrap: anywhere;
         font-family: ui-monospace, Consolas, monospace;
         background: #f8f8f8;
         border: 1px solid #e0e0e0;
         border-radius: 4px;
+        min-height: 4.5em;
         max-height: 120px;
-        overflow: auto;
+        overflow-x: auto;
+        overflow-y: auto;
       }
     </style>
   </head>

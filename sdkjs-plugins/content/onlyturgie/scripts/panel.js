@@ -192,41 +192,12 @@
       .replace(/[^a-z0-9-]/g, "");
   }
 
-  function base64EncodeUtf8(s) {
-    var t = String(s);
-    // btoa() n'accepte que Latin1. On force l'encodage UTF-8.
-    try {
-      return btoa(unescape(encodeURIComponent(t)));
-    } catch (e) {
-      // Fallback: si btoa échoue, on tente une version sans caractères non-ASCII.
-      try {
-        return btoa(unescape(encodeURIComponent(slugify(t))));
-      } catch (e2) {
-        return "";
-      }
-    }
-  }
-
-  function base64UrlEncode(s) {
-    var b64 = base64EncodeUtf8(s);
-    // URL-safe Base64: remplace +/ par -_ et supprime le padding =
-    return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-  }
-
   function applyUrlTemplate(template, chantName) {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.applyChantUrlPlaceholders === "function") {
+      return window.LstjoRuntime.applyChantUrlPlaceholders(template, chantName);
+    }
     if (!template) return "";
-    var trimmed = String(chantName).trim();
-    return String(template)
-      .split("{encoded}")
-      .join(encodeURIComponent(trimmed))
-      .split("{base64url}")
-      .join(base64UrlEncode(trimmed))
-      .split("{base64}")
-      .join(base64EncodeUtf8(trimmed))
-      .split("{slug}")
-      .join(slugify(trimmed))
-      .split("{chant}")
-      .join(trimmed);
+    return String(template);
   }
 
   /** Extrait une URL depuis la réponse JSON (clé simple ou chemin type "data.url"). */
@@ -323,7 +294,7 @@
     var newPath = pathname.replace(/\/api\/[^/]+$/i, "/api/" + targetKind);
     if (newPath === pathname) return "";
 
-    // hash attend le nom de sous-dossier encodé en base64 URL-safe (voir panel.js / base64UrlEncode).
+    // hash attend le nom de sous-dossier encodé en base64 URL-safe (LstjoRuntime.base64UrlEncodeChantName).
     return u.origin + newPath + "?token=" + encodeURIComponent(token) + "&hash={base64url}";
   }
 

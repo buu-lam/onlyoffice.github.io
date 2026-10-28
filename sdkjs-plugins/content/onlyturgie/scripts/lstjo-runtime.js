@@ -334,6 +334,37 @@
     return String(sourceId);
   }
 
+  function extractTokenFromUrl(url) {
+    if (!url || typeof url !== "string") return "";
+    try {
+      return (new URL(url.trim()).searchParams.get("token") || "").trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  /** Jeton API : localStorage, puis URL catalogue enregistrée (jsonAutocomplete.urls). */
+  function getEffectiveApiToken(cfg, sourceId) {
+    var direct = getApiToken();
+    if (direct) return direct;
+    cfg = cfg || getLstjoConfig();
+    var sid =
+      sourceId ||
+      (cfg && cfg.panel && typeof cfg.panel.sourceId === "string" && cfg.panel.sourceId) ||
+      "chant";
+    var legacy = loadLegacyUrls();
+    if (legacy[sid]) {
+      var fromLegacy = extractTokenFromUrl(legacy[sid]);
+      if (fromLegacy) return fromLegacy;
+    }
+    var built = buildSourceUrlFromTemplate(cfg, sid);
+    if (built) {
+      var fromBuilt = extractTokenFromUrl(built);
+      if (fromBuilt) return fromBuilt;
+    }
+    return "";
+  }
+
   function buildSourceUrlFromTemplate(cfg, sourceId) {
     cfg = cfg || getLstjoConfig();
     var token = getApiToken();
@@ -389,7 +420,9 @@
     var tpl = getPanelUrlTemplate(cfg, templateKey);
     if (!tpl) return "";
 
-    var token = getApiToken();
+    var sourceId =
+      (cfg && cfg.panel && typeof cfg.panel.sourceId === "string" && cfg.panel.sourceId) || "chant";
+    var token = getEffectiveApiToken(cfg, sourceId);
     var apiBase = getApiBase(cfg);
     if (!apiBase) return "";
     var host = getApiHost() || apiBase;
@@ -439,9 +472,17 @@
 
   function hasApiCredentials(cfg) {
     cfg = cfg || getLstjoConfig();
-    if (!getApiBase(cfg)) return false;
-    if (getEffectiveAuthMode(cfg) === "nextcloud") return true;
-    return !!getApiToken();
+    if (getEffectiveAuthMode(cfg) === "nextcloud") {
+      return !!getApiBase(cfg);
+    }
+    if (getEffectiveApiToken(cfg)) return !!getApiBase(cfg) || !!extractTokenFromUrl(resolveSourceUrl("chant", cfg));
+    if (!getApiBase(cfg)) {
+      var legacy = loadLegacyUrls();
+      return Object.keys(legacy).some(function (k) {
+        return !!extractTokenFromUrl(legacy[k]);
+      });
+    }
+    return false;
   }
 
   function getCredentialsStatusMessage(cfg) {
@@ -563,6 +604,8 @@
     getLstjoConfig: getLstjoConfig,
     syncFromEditorBridge: syncFromEditorBridge,
     getApiToken: getApiToken,
+    getEffectiveApiToken: getEffectiveApiToken,
+    extractTokenFromUrl: extractTokenFromUrl,
     setApiToken: setApiToken,
     getAuthMode: getConfiguredAuthMode,
     setAuthMode: setAuthMode,

@@ -243,8 +243,39 @@
     return typeof cur === "string" ? cur.trim() : "";
   }
 
-  function fetchUrlFromApi(apiTemplate, chantName, jsonUrlKey) {
-    var apiUrl = applyUrlTemplate(apiTemplate, chantName);
+  function isUsablePanelFileUrl(url) {
+    var trimmed = (url || "").trim();
+    if (!trimmed) return false;
+    try {
+      var u = new URL(trimmed);
+      var p = u.pathname || "";
+      if (p === "/" || p === "") return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function ensureTokenOnApiUrl(apiUrl, cfg) {
+    if (!apiUrl || apiUrl.indexOf("token=") !== -1) return apiUrl;
+    if (!window.LstjoRuntime || typeof window.LstjoRuntime.getEffectiveApiToken !== "function") {
+      return apiUrl;
+    }
+    var panel = (cfg && cfg.panel) || {};
+    var sourceId = typeof panel.sourceId === "string" && panel.sourceId ? panel.sourceId : "chant";
+    var token = window.LstjoRuntime.getEffectiveApiToken(cfg, sourceId);
+    if (!token) return apiUrl;
+    try {
+      var u = new URL(apiUrl);
+      u.searchParams.set("token", token);
+      return u.toString();
+    } catch (e2) {
+      return apiUrl;
+    }
+  }
+
+  function fetchUrlFromApi(apiTemplate, chantName, jsonUrlKey, cfg) {
+    var apiUrl = ensureTokenOnApiUrl(applyUrlTemplate(apiTemplate, chantName), cfg || getLstjoConfig());
     if (!apiUrl) return Promise.resolve("");
     var fetchFn =
       window.LstjoRuntime && typeof window.LstjoRuntime.fetchLiturgie === "function"
@@ -260,7 +291,8 @@
         return response.json();
       })
       .then(function (data) {
-        return extractUrlFromJson(data, jsonUrlKey);
+        var url = extractUrlFromJson(data, jsonUrlKey);
+        return isUsablePanelFileUrl(url) ? url : "";
       });
   }
 
@@ -570,7 +602,7 @@
 
       var pdfPromise;
       if (needPdfApi) {
-        pdfPromise = fetchUrlFromApi(pdfApiTpl, chant, jsonUrlKey).catch(function () {
+        pdfPromise = fetchUrlFromApi(pdfApiTpl, chant, jsonUrlKey, cfg).catch(function () {
           return "";
         });
       } else if (needPdfDirect) {
@@ -581,7 +613,7 @@
 
       var pptPromise;
       if (needPptApi) {
-        pptPromise = fetchUrlFromApi(pptApiTpl, chant, jsonUrlKey).catch(function () {
+        pptPromise = fetchUrlFromApi(pptApiTpl, chant, jsonUrlKey, cfg).catch(function () {
           return "";
         });
       } else if (needPptDirect) {
@@ -599,7 +631,10 @@
         var pptEmptyMsg = "";
         if (!pdfUrl) {
           if (needPdfApi) {
-            pdfEmptyMsg = "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.";
+            pdfEmptyMsg =
+              "API : pas de clé « " +
+              jsonUrlKey +
+              " », jeton manquant, ou erreur réseau (vérifiez Onlyturgie — paramètres).";
             setEmptyMessage("pdf", pdfEmptyMsg);
           } else if (needPdfDirect) {
             pdfEmptyMsg = "URL PDF vide (modèle).";
@@ -611,7 +646,10 @@
         }
         if (!pptUrl) {
           if (needPptApi) {
-            pptEmptyMsg = "API : pas de clé « " + jsonUrlKey + " » ou erreur réseau.";
+            pptEmptyMsg =
+              "API : pas de clé « " +
+              jsonUrlKey +
+              " », jeton manquant, ou erreur réseau (vérifiez Onlyturgie — paramètres).";
             setEmptyMessage("ppt", pptEmptyMsg);
           } else if (needPptDirect) {
             pptEmptyMsg = "URL présentation vide (modèle).";

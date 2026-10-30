@@ -13,9 +13,13 @@
   var chantStatusEl = null;
   /** Incrémenté à chaque résolution pour ignorer les réponses API obsolètes. */
   var resolveSeq = 0;
+  /** Ignore les callbacks getCursorText / callCommand périmés quand onTargetPositionChanged se répète. */
+  var pendingCursorResolveId = 0;
   /** Dernier contexte (ligne + chant) déjà résolu — évite les relances si onTargetPositionChanged boucle. */
   var lastSettledResolveKey = "";
   var lastSettledResolve = null;
+  /** Requêtes PDF/PPT en cours pour un chant (évite les doublons avant lastSettled). */
+  var inFlightChantFetch = null;
 
   function getLstjoConfig() {
     var p = window.Asc.plugin;
@@ -407,6 +411,11 @@
       return;
     }
 
+    var currentSrc = (iframe.getAttribute("src") || "").trim();
+    if (!iframe.hidden && currentSrc === src) {
+      return;
+    }
+
     emptyEl.hidden = true;
     iframe.hidden = false;
     iframe.setAttribute("src", src);
@@ -463,7 +472,10 @@
   }
 
   function buildResolveKey(lineText, chant) {
-    return normalizeForMatch(lineText) + "\x1e" + String(chant || "");
+    if (chant) {
+      return normalizeForMatch(chant);
+    }
+    return "\x1e" + normalizeForMatch(lineText);
   }
 
   function applySettledResolve(snapshot) {
@@ -545,9 +557,11 @@
       return;
     }
 
-    var mySeq = ++resolveSeq;
+    var cursorId = ++pendingCursorResolveId;
 
     getCursorText(function (lineText) {
+      if (cursorId !== pendingCursorResolveId) return;
+
       var chantMatch = panel.chantMatch === "contains" ? "contains" : "exact";
       var chant = findMatchingChant(lineText, chantList, chantMatch);
 
@@ -557,7 +571,6 @@
           applySettledResolve(lastSettledResolve);
           return;
         }
-        if (mySeq !== resolveSeq) return;
         var noChantStatus = lineText
           ? "Aucun chant reconnu sur cette ligne." + (chantList.length ? "" : " (liste vide — vérifiez la source dans lstjo.panel.)")
           : "Placez le curseur sur une ligne dont le nom d’un chant est dans la liste.";
@@ -583,8 +596,11 @@
         applySettledResolve(lastSettledResolve);
         return;
       }
+      if (inFlightChantFetch && inFlightChantFetch.key === resolveKey) {
+        return;
+      }
 
-      if (mySeq !== resolveSeq) return;
+      var mySeq = ++resolveSeq;
 
       setStatus("Chant : " + chant);
 
@@ -624,7 +640,13 @@
         pptPromise = Promise.resolve({ url: "", error: "" });
       }
 
-      Promise.all([pdfPromise, pptPromise]).then(function (pair) {
+      var fetchAll = Promise.all([pdfPromise, pptPromise]);
+      inFlightChantFetch = { key: resolveKey, promise: fetchAll };
+
+      fetchAll.then(function (pair) {
+        if (inFlightChantFetch && inFlightChantFetch.promise === fetchAll) {
+          inFlightChantFetch = null;
+        }
         if (mySeq !== resolveSeq) return;
         var pdfResult = pair[0] || { url: "", error: "" };
         var pptResult = pair[1] || { url: "", error: "" };
@@ -673,6 +695,10 @@
         };
 
         applyPanes(pdfUrl, pptUrl);
+      }).catch(function () {
+        if (inFlightChantFetch && inFlightChantFetch.promise === fetchAll) {
+          inFlightChantFetch = null;
+        }
       });
     });
   }
@@ -789,6 +815,7 @@
     }
     lastSettledResolveKey = "";
     lastSettledResolve = null;
+    inFlightChantFetch = null;
     var cfg = getLstjoConfig();
     loadChantList(cfg)
       .then(function (list) {
@@ -804,6 +831,7 @@
     chantStatusEl = document.getElementById("panel-status");
     lastSettledResolveKey = "";
     lastSettledResolve = null;
+    inFlightChantFetch = null;
     applyPanelWindowSize();
     initSplitGutter();
 

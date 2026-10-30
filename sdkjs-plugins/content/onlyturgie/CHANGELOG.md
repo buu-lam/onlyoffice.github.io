@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.18
+
+- Panneau : fin du clignotement des aperçus PDF/PPT — pas de rechargement iframe si l’URL est inchangée ; une seule paire d’appels API `/api/pdf` + `/api/ppt` par chant (cache chant, requête en vol, callbacks curseur périmés ignorés).
+
 ## 2.1.17
 
 - Panneau : ouverture automatique à l’ouverture du document (`ShowWindow` + `lstjo.panel.autoOpenOnDocument`, défaut `true`) ; icône barre droite sans passer par le menu Compléments.

@@ -20,6 +20,10 @@
   var lastSettledResolve = null;
   /** Requêtes PDF/PPT en cours pour un chant (évite les doublons avant lastSettled). */
   var inFlightChantFetch = null;
+  /** PDF chargé en blob: (évite X-Frame-Options Nextcloud dans l’iframe du panneau). */
+  var pdfBlobObjectUrl = "";
+  var pdfBlobSourceUrl = "";
+  var pdfBlobLoadSeq = 0;
 
   function getLstjoConfig() {
     var p = window.Asc.plugin;
@@ -395,6 +399,77 @@
     return "https://view.officeapps.live.com/op/embed.aspx?src=" + encodeURIComponent(trimmed);
   }
 
+  function revokePdfBlobUrl() {
+    if (pdfBlobObjectUrl) {
+      try {
+        URL.revokeObjectURL(pdfBlobObjectUrl);
+      } catch (e) {
+        /* ignore */
+      }
+      pdfBlobObjectUrl = "";
+      pdfBlobSourceUrl = "";
+    }
+  }
+
+  /**
+   * Firefox / Nextcloud refusent d’afficher cloud…/api/pdf/file dans une iframe cross-origin (X-Frame-Options).
+   * fetch + blob: URL = même origine que le panneau plugin.
+   */
+  function bindPdfPaneViaBlob(emptyEl, iframe, fileUrl) {
+    var trimmed = (fileUrl || "").trim();
+    if (!trimmed) {
+      revokePdfBlobUrl();
+      emptyEl.hidden = false;
+      iframe.hidden = true;
+      iframe.removeAttribute("src");
+      return;
+    }
+    if (pdfBlobSourceUrl === trimmed && pdfBlobObjectUrl && !iframe.hidden) {
+      var cur = (iframe.getAttribute("src") || "").trim();
+      if (cur === pdfBlobObjectUrl) return;
+    }
+
+    var loadSeq = ++pdfBlobLoadSeq;
+    var fetchFn =
+      window.LstjoRuntime && typeof window.LstjoRuntime.fetchLiturgie === "function"
+        ? function (u) {
+            return window.LstjoRuntime.fetchLiturgie(u);
+          }
+        : function (u) {
+            return fetch(u, { method: "GET", credentials: "omit" });
+          };
+
+    emptyEl.hidden = false;
+    iframe.hidden = true;
+    emptyEl.textContent = "Chargement PDF…";
+
+    fetchFn(trimmed)
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.blob();
+      })
+      .then(function (blob) {
+        if (loadSeq !== pdfBlobLoadSeq) return;
+        revokePdfBlobUrl();
+        pdfBlobSourceUrl = trimmed;
+        pdfBlobObjectUrl = URL.createObjectURL(blob);
+        emptyEl.hidden = true;
+        iframe.hidden = false;
+        iframe.setAttribute("src", pdfBlobObjectUrl);
+      })
+      .catch(function (err) {
+        if (loadSeq !== pdfBlobLoadSeq) return;
+        revokePdfBlobUrl();
+        emptyEl.hidden = false;
+        iframe.hidden = true;
+        iframe.removeAttribute("src");
+        emptyEl.textContent =
+          "PDF : " + String(err && err.message ? err.message : err) + " (CORS / jeton / fichier ?)";
+      });
+  }
+
   function bindPane(kind, url, resolveSrc) {
     var emptyEl = document.getElementById("empty-" + kind);
     var iframe = document.getElementById("iframe-" + kind);
@@ -403,6 +478,15 @@
     var src = (resolveSrc || function (u) {
       return (u || "").trim();
     })(url);
+
+    if (kind === "pdf" && src && /^https?:\/\//i.test(src)) {
+      bindPdfPaneViaBlob(emptyEl, iframe, src);
+      return;
+    }
+
+    if (kind === "pdf" && !src) {
+      revokePdfBlobUrl();
+    }
 
     if (!src) {
       emptyEl.hidden = false;
@@ -816,6 +900,8 @@
     lastSettledResolveKey = "";
     lastSettledResolve = null;
     inFlightChantFetch = null;
+    pdfBlobLoadSeq++;
+    revokePdfBlobUrl();
     var cfg = getLstjoConfig();
     loadChantList(cfg)
       .then(function (list) {

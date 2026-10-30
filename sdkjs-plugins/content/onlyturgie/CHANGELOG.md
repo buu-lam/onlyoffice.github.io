@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.19
+
+- Panneau PDF : chargement via `fetch` + URL blob (contourne X-Frame-Options Nextcloud / message Firefox « intégrée par un autre site »).
+
 ## 2.1.18
 
 - Panneau : fin du clignotement des aperçus PDF/PPT — pas de rechargement iframe si l’URL est inchangée ; une seule paire d’appels API `/api/pdf` + `/api/ppt` par chant (cache chant, requête en vol, callbacks curseur périmés ignorés).

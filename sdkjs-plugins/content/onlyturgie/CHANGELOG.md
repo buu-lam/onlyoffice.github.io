@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.17
+
+- Panneau : ouverture automatique à l’ouverture du document (`ShowWindow` + `lstjo.panel.autoOpenOnDocument`, défaut `true`) ; icône barre droite sans passer par le menu Compléments.
+- Prérequis : variation **Onlyturgie** (background / autocomplétion) activée une fois dans l’éditeur (état mémorisé). Désactiver : `lstjo.panel.autoOpenOnDocument: false` ; panneau replié au démarrage : `autoOpenCollapsed: true`.
+
+## 2.1.16
+
+- Hash PDF/PPT (`{base64url}`) : base64 UTF-8 du chemin ou nom **brut** (espaces, `/`), sans `encodeURIComponent` avant base64 (évite `%20` / `%2F` après décodage côté liturgie).
+
+## 2.1.15
+
+- Panneau : messages d’erreur PDF/PPT explicites (HTTP 404/403, JSON, URL racine) au lieu du message générique sur la clé `url`.
+- Panneau : resync hôte/jeton à chaque rafraîchissement + après OK « Onlyturgie — paramètres ».
+- `resolvePanelApiTemplate` : conserve `{base64url}` (et placeholders chant) après résolution de `{apiBase}` / `{token}`.
+
 ## 2.1.12
 
 - Libellés de variation paramètres sans version figée (évite l’affichage « v2.1.8 » dans le menu).

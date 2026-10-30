@@ -374,6 +374,24 @@
     window.Asc.Buttons.registerContextMenu();
   }
 
+  function registerPanelAutoOpenOnDocument() {
+    if (window.lstjoPanelAutoOpenRegistered) {
+      return;
+    }
+    window.lstjoPanelAutoOpenRegistered = true;
+    function onDocumentReady() {
+      if (window.LstjoRuntime && typeof window.LstjoRuntime.resetPanelAutoOpenForDocument === "function") {
+        window.LstjoRuntime.resetPanelAutoOpenForDocument();
+      }
+      if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+        window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
+      }
+    }
+    if (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.attachEditorEvent === "function") {
+      window.Asc.plugin.attachEditorEvent("onDocumentContentReady", onDocumentReady);
+    }
+  }
+
   async function bootstrapFetchRemoteSources() {
     var ids = Object.keys(urlsBySource);
     for (var i = 0; i < ids.length; i++) {
@@ -411,6 +429,19 @@
       window.Asc.plugin.createInputHelper();
       window.Asc.plugin.getInputHelper().createWindow();
       registerSettingsContextMenu();
+      registerPanelAutoOpenOnDocument();
+      if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+        window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
+      }
+    }
+  };
+
+  window.Asc.plugin.event_onDocumentContentReady = function () {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.resetPanelAutoOpenForDocument === "function") {
+      window.LstjoRuntime.resetPanelAutoOpenForDocument();
+    }
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+      window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
     }
   };
 

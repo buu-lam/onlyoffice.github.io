@@ -247,7 +247,9 @@
 
   function fetchUrlFromApi(apiTemplate, chantName, jsonUrlKey, cfg) {
     var apiUrl = ensureTokenOnApiUrl(applyUrlTemplate(apiTemplate, chantName), cfg || getLstjoConfig());
-    if (!apiUrl) return Promise.resolve("");
+    if (!apiUrl) {
+      return Promise.resolve({ url: "", error: "Modèle API vide (hôte ou jeton manquant ?)." });
+    }
     var fetchFn =
       window.LstjoRuntime && typeof window.LstjoRuntime.fetchLiturgie === "function"
         ? function (u) {
@@ -258,12 +260,42 @@
           };
     return fetchFn(apiUrl)
       .then(function (response) {
-        if (!response.ok) throw new Error("HTTP " + response.status);
-        return response.json();
+        return response.text().then(function (body) {
+          if (!response.ok) {
+            var preview = (body || "").trim().slice(0, 160);
+            var hint =
+              response.status === 404
+                ? " (pas de PDF/PPT dans le dossier chant sur Nextcloud ?)"
+                : response.status === 403
+                  ? " (jeton ou droits API)"
+                  : "";
+            throw new Error("HTTP " + response.status + hint + (preview ? " — " + preview : ""));
+          }
+          try {
+            return JSON.parse(body);
+          } catch (eJson) {
+            throw new Error("Réponse non JSON : " + (body || "").trim().slice(0, 120));
+          }
+        });
       })
       .then(function (data) {
         var url = extractUrlFromJson(data, jsonUrlKey);
-        return isUsablePanelFileUrl(url) ? url : "";
+        if (isUsablePanelFileUrl(url)) {
+          return { url: url, error: "" };
+        }
+        var msg =
+          data && typeof data.message === "string" && data.message.trim()
+            ? data.message.trim()
+            : url
+              ? "URL refusée (chemin vide ou racine du site) : " + url
+              : "Pas de clé « " + jsonUrlKey + " » dans la réponse JSON.";
+        return { url: "", error: msg };
+      })
+      .catch(function (err) {
+        return {
+          url: "",
+          error: String(err && err.message ? err.message : err),
+        };
       });
   }
 
@@ -446,6 +478,9 @@
   }
 
   function resolveUrlsForPanels() {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
+      window.LstjoRuntime.syncFromEditorBridge();
+    }
     var cfg = getLstjoConfig();
     var panel = (cfg && cfg.panel) || {};
     var pptUseOfficeViewer = panel.pptUseOfficeViewer !== false;
@@ -573,39 +608,36 @@
 
       var pdfPromise;
       if (needPdfApi) {
-        pdfPromise = fetchUrlFromApi(pdfApiTpl, chant, jsonUrlKey, cfg).catch(function () {
-          return "";
-        });
+        pdfPromise = fetchUrlFromApi(pdfApiTpl, chant, jsonUrlKey, cfg);
       } else if (needPdfDirect) {
-        pdfPromise = Promise.resolve(applyUrlTemplate(pdfTpl, chant));
+        pdfPromise = Promise.resolve({ url: applyUrlTemplate(pdfTpl, chant), error: "" });
       } else {
-        pdfPromise = Promise.resolve("");
+        pdfPromise = Promise.resolve({ url: "", error: "" });
       }
 
       var pptPromise;
       if (needPptApi) {
-        pptPromise = fetchUrlFromApi(pptApiTpl, chant, jsonUrlKey, cfg).catch(function () {
-          return "";
-        });
+        pptPromise = fetchUrlFromApi(pptApiTpl, chant, jsonUrlKey, cfg);
       } else if (needPptDirect) {
-        pptPromise = Promise.resolve(applyUrlTemplate(pptTpl, chant));
+        pptPromise = Promise.resolve({ url: applyUrlTemplate(pptTpl, chant), error: "" });
       } else {
-        pptPromise = Promise.resolve("");
+        pptPromise = Promise.resolve({ url: "", error: "" });
       }
 
       Promise.all([pdfPromise, pptPromise]).then(function (pair) {
         if (mySeq !== resolveSeq) return;
-        var pdfUrl = pair[0] || "";
-        var pptUrl = pair[1] || "";
+        var pdfResult = pair[0] || { url: "", error: "" };
+        var pptResult = pair[1] || { url: "", error: "" };
+        var pdfUrl = pdfResult.url || "";
+        var pptUrl = pptResult.url || "";
 
         var pdfEmptyMsg = "";
         var pptEmptyMsg = "";
         if (!pdfUrl) {
           if (needPdfApi) {
-            pdfEmptyMsg =
-              "API : pas de clé « " +
-              jsonUrlKey +
-              " », jeton manquant, ou erreur réseau (vérifiez Onlyturgie — paramètres).";
+            pdfEmptyMsg = pdfResult.error
+              ? "API PDF : " + pdfResult.error
+              : "API PDF : échec (vérifiez Onlyturgie — paramètres, jeton, ou fichier dans le dossier chant).";
             setEmptyMessage("pdf", pdfEmptyMsg);
           } else if (needPdfDirect) {
             pdfEmptyMsg = "URL PDF vide (modèle).";
@@ -617,10 +649,9 @@
         }
         if (!pptUrl) {
           if (needPptApi) {
-            pptEmptyMsg =
-              "API : pas de clé « " +
-              jsonUrlKey +
-              " », jeton manquant, ou erreur réseau (vérifiez Onlyturgie — paramètres).";
+            pptEmptyMsg = pptResult.error
+              ? "API présentation : " + pptResult.error
+              : "API présentation : échec (vérifiez paramètres ou .ppt/.pptx dans le dossier chant).";
             setEmptyMessage("ppt", pptEmptyMsg);
           } else if (needPptDirect) {
             pptEmptyMsg = "URL présentation vide (modèle).";
@@ -752,6 +783,23 @@
     );
   }
 
+  function onPanelSettingsSaved() {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
+      window.LstjoRuntime.syncFromEditorBridge();
+    }
+    lastSettledResolveKey = "";
+    lastSettledResolve = null;
+    var cfg = getLstjoConfig();
+    loadChantList(cfg)
+      .then(function (list) {
+        chantList = list;
+        scheduleRefresh();
+      })
+      .catch(function () {
+        scheduleRefresh();
+      });
+  }
+
   window.Asc.plugin.init = function () {
     chantStatusEl = document.getElementById("panel-status");
     lastSettledResolveKey = "";
@@ -762,6 +810,22 @@
     if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
       window.LstjoRuntime.syncFromEditorBridge();
     }
+    if (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.attachEvent === "function") {
+      window.Asc.plugin.attachEvent("onlyturgie.settingsSaved", onPanelSettingsSaved);
+    }
+    window.addEventListener("message", function (ev) {
+      var data = ev.data;
+      if (typeof data === "string") {
+        try {
+          data = JSON.parse(data);
+        } catch (e) {
+          return;
+        }
+      }
+      if (data && data.type === "onlyturgie.settingsSaved") {
+        onPanelSettingsSaved();
+      }
+    });
 
     var cfg = getLstjoConfig();
     loadChantList(cfg)

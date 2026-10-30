@@ -337,28 +337,37 @@
       .replace(/[^a-z0-9-]/g, "");
   }
 
+  /** Base64 standard (UTF-8) — texte brut, pas encodeURIComponent (%20 / %2F interdits avant base64). */
   function base64EncodeUtf8(s) {
     var t = String(s);
     try {
+      if (typeof TextEncoder !== "undefined") {
+        var bytes = new TextEncoder().encode(t);
+        var bin = "";
+        for (var i = 0; i < bytes.length; i++) {
+          bin += String.fromCharCode(bytes[i]);
+        }
+        return btoa(bin);
+      }
       return btoa(unescape(encodeURIComponent(t)));
     } catch (e) {
       try {
-        return btoa(unescape(encodeURIComponent(slugifyChantName(t))));
+        return base64EncodeUtf8(slugifyChantName(t));
       } catch (e2) {
         return "";
       }
     }
   }
 
-  /** Base64 URL-safe du nom de dossier chant (UTF-8). Ne pas préfixer avec encodeURIComponent. */
+  /** Base64 URL-safe du chemin ou nom de chant (UTF-8 brut, ex. espaces et « / » réels). */
   function base64UrlEncodeChantName(s) {
-    var b64 = base64EncodeUtf8(s);
+    var b64 = base64EncodeUtf8(String(s == null ? "" : s).trim());
     return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   }
 
   /**
    * Remplace {chant}, {slug}, {encoded}, {base64}, {base64url} pour PDF/PPT.
-   * {base64url} = base64 URL-safe du nom brut (API liturgie hash=).
+   * {base64url} = base64 URL-safe du chemin/nom brut (API liturgie hash=), jamais après encodeURIComponent.
    */
   function applyChantUrlPlaceholders(template, chantName) {
     if (!template) return "";
@@ -491,9 +500,26 @@
       token: token,
     });
 
-    if (/\{[a-zA-Z0-9]+\}/.test(resolved)) return "";
+    if (templateHasUnresolvedConfigPlaceholders(resolved)) return "";
     if (usesTokenInUrls(cfg) && resolved.indexOf("token=") !== -1 && !token) return "";
     return resolved;
+  }
+
+  /** Placeholders chant ({base64url}, etc.) restent pour applyChantUrlPlaceholders dans le panneau. */
+  function templateHasUnresolvedConfigPlaceholders(resolved) {
+    var re = /\{([a-zA-Z0-9]+)\}/g;
+    var allowedChant = {
+      base64url: true,
+      base64: true,
+      encoded: true,
+      slug: true,
+      chant: true,
+    };
+    var m;
+    while ((m = re.exec(resolved)) !== null) {
+      if (!allowedChant[m[1]]) return true;
+    }
+    return false;
   }
 
   function inferPanelApiUrlTemplateFromCatalogUrl(catalogUrl, targetKind, cfg) {
@@ -630,6 +656,68 @@
       });
   }
 
+  function buildPanelShowWindowVariation() {
+    var cfg = getLstjoConfig();
+    var panel = (cfg && cfg.panel) || {};
+    var w =
+      typeof panel.panelWidth === "number" && panel.panelWidth > 0 ? panel.panelWidth : 520;
+    var h =
+      typeof panel.panelHeight === "number" && panel.panelHeight > 0 ? panel.panelHeight : 720;
+    return {
+      url: "panel.html",
+      description: "Panneau latéral : PDF et présentation",
+      descriptionLocale: {
+        fr: "Panneau droit : aperçu PDF (haut) et présentation (bas), URLs dans lstjo.panel.",
+      },
+      type: "panelRight",
+      isVisual: true,
+      isActivated: panel.autoOpenCollapsed === true ? false : true,
+      initDataType: "none",
+      EditorsSupport: ["word", "cell", "slide"],
+      events: ["onTargetPositionChanged"],
+      size: [w, h],
+    };
+  }
+
+  function isPanelAutoOpenEnabled() {
+    var cfg = getLstjoConfig();
+    var panel = (cfg && cfg.panel) || {};
+    return panel.autoOpenOnDocument !== false;
+  }
+
+  function resetPanelAutoOpenForDocument() {
+    global.lstjoPanelAutoOpenDone = false;
+  }
+
+  /**
+   * Affiche la variation panneau (icône barre droite + panneau) sans passer par le menu Compléments.
+   * Nécessite que la variation background Onlyturgie soit active (état mémorisé par l’éditeur).
+   */
+  function ensureOnlyturgiePanelVisible() {
+    if (!isPanelAutoOpenEnabled()) return;
+    if (global.lstjoPanelAutoOpenDone) return;
+    var p = global.Asc && global.Asc.plugin;
+    if (!p || typeof p.executeMethod !== "function") return;
+    var guid = p.guid;
+    if (!guid || typeof guid !== "string") return;
+    var editor = p.info && p.info.editorType;
+    if (editor && ["word", "cell", "slide"].indexOf(editor) === -1) return;
+    global.lstjoPanelAutoOpenDone = true;
+    p.executeMethod("ShowWindow", ["iframe_" + guid, buildPanelShowWindowVariation()]);
+  }
+
+  function scheduleEnsureOnlyturgiePanelVisible() {
+    if (!isPanelAutoOpenEnabled()) return;
+    var run = function () {
+      ensureOnlyturgiePanelVisible();
+    };
+    if (typeof global.setTimeout === "function") {
+      global.setTimeout(run, 0);
+    } else {
+      run();
+    }
+  }
+
   /** Après OK paramètres : notifier le background (localStorage est par origine du plugin, pas Nextcloud). */
   function notifySettingsSaved() {
     var guid = global.Asc && global.Asc.plugin && global.Asc.plugin.guid;
@@ -688,5 +776,7 @@
     getFetchCredentials: getFetchCredentials,
     testCatalogSource: testCatalogSource,
     notifySettingsSaved: notifySettingsSaved,
+    resetPanelAutoOpenForDocument: resetPanelAutoOpenForDocument,
+    scheduleEnsureOnlyturgiePanelVisible: scheduleEnsureOnlyturgiePanelVisible,
   };
 })(typeof window !== "undefined" ? window : this);

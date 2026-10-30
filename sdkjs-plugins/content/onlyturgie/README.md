@@ -19,6 +19,8 @@ Tout se configure dans **`config.json`**, clé racine **`lstjo`** :
 | **`inlineItems`** | Objet `sourceId → [ "ligne1", … ]` : suggestions de secours si pas de données chargées (ex. URL vide). |
 | **`completionScope`** | `"full"` (défaut) : filtre avec **`GetCurrentSentence`** et remplace avec **`ReplaceCurrentSentence`** — toute la **phrase** courante dans le document (pas le fragment reconstruit par l’Input helper). `"word"` : mot courant + `InputText` (style dictionnaire). |
 | **`helperWidth`** / **`helperMaxWidth`** | Largeur de la liste (mêmes unités que le code officiel, ex. base ~150 → ici 340 par défaut, plafond 920). |
+| **`panel.autoOpenOnDocument`** | `true` (défaut) : au chargement du document, le panneau droit est ouvert via l’API éditeur (icône « L » visible sans menu Compléments). Nécessite la variation **Onlyturgie** (background) activée une fois. |
+| **`panel.autoOpenCollapsed`** | Si `true`, le panneau est accroché à la barre droite mais replié (`isActivated: false`). |
 
 L’**hôte** (`https://…`), le **mode d’auth** et le **jeton API** sont saisis via **Onlyturgie — paramètres** (`onlyturgie.apiHost`, `onlyturgie.authMode`, `onlyturgie.apiToken`). Ils ne sont pas dans `config.json` (sauf `lstjo.authMode` par défaut : `auto`).
 

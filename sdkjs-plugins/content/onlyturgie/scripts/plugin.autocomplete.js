@@ -8,8 +8,21 @@
   var urlsBySource = {};
   var itemsBySource = {};
   var inputEventSeq = 0;
-  var settingsPluginWindow = null;
+  /** InternalId du contrôle de contenu sous le curseur lors de la dernière saisie ("" = hors contrôle). */
+  var activeContentControlId = "";
 
+  function isAutocompleteEnabled() {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.readAutocompleteEnabledPreference === "function") {
+      return window.LstjoRuntime.readAutocompleteEnabledPreference();
+    }
+    return true;
+  }
+
+  function hideInputHelperIfDisabled() {
+    if (!isAutocompleteEnabled() && window.Asc && window.Asc.plugin && window.Asc.plugin.getInputHelper) {
+      window.Asc.plugin.getInputHelper().unShow();
+    }
+  }
   function getLstjoConfig() {
     var p = window.Asc.plugin;
     if (!p) return {};
@@ -190,7 +203,9 @@
     var source = payload;
 
     if (!Array.isArray(source)) {
-      if (source && Array.isArray(source.items)) {
+      if (source && Array.isArray(source.suggestions)) {
+        source = source.suggestions;
+      } else if (source && Array.isArray(source.items)) {
         source = source.items;
       } else if (source && Array.isArray(source.data)) {
         source = source.data;
@@ -237,15 +252,45 @@
     return out;
   }
 
-  function parseSourceFromTag(tag) {
+  /** Clé de comparaison : minuscules, sans accents ni « : » / espaces superflus. */
+  function normalizeTagKey(s) {
+    var t = String(s || "").toLowerCase();
+    if (t.normalize) t = t.normalize("NFD").replace(/[̀-ͯ]/g, "");
+    return t.replace(/[\s:]+$/g, "").replace(/\s+/g, " ").trim();
+  }
+
+  /** tagMap avec clés normalisées (« Animation », « animation : » → même entrée). */
+  function lookupTagMap(raw) {
+    var map = getMergedTagMap();
+    if (map[raw]) return map[raw];
+    var key = normalizeTagKey(raw);
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      if (normalizeTagKey(keys[i]) === key) return map[keys[i]];
+    }
+    return null;
+  }
+
+  function parseSourceFromTag(tag, depth) {
     if (!tag || typeof tag !== "string") return null;
     var raw = tag.trim();
     var lower = raw.toLowerCase();
     if (!lower) return null;
 
-    var map = getMergedTagMap();
-    var mapped = map[raw] || map[lower];
+    // Tag = nom d’un groupe Nextcloud connu → membres du groupe (prioritaire sur le catalogue homonyme).
+    var rt = window.LstjoRuntime;
+    if (rt && rt.GROUP_TAGS && rt.GROUP_TAGS.indexOf(lower) !== -1) {
+      var gid = rt.GROUP_SOURCE_PREFIX + lower;
+      if (urlsBySource[gid]) return gid;
+    }
+
+    var mapped = lookupTagMap(raw);
     if (mapped) {
+      // Cible = groupe ou autre tag (« Animation » → « animateurs ») : résolution complète, un niveau.
+      if (!depth) {
+        var viaTag = parseSourceFromTag(String(mapped), 1);
+        if (viaTag) return viaTag;
+      }
       var id1 = findSourceIdByName(String(mapped));
       if (id1) return id1;
       if (isValidSourceId(String(mapped))) return String(mapped);
@@ -323,40 +368,15 @@
   }
 
   function openOnlyturgieSettingsWindow() {
-    if (!window.Asc || !window.Asc.PluginWindow) return;
-    var variation = {
-      url: "settings.html",
-      description: "Jeton API liturgie (stockage local)",
-      descriptionLocale: {
-        fr: "Saisie du jeton API ; non inclus dans config.json."
-      },
-      type: "window",
-      isVisual: true,
-      isViewer: true,
-      initDataType: "none",
-      isUpdateOleOnResize: false,
-      EditorsSupport: ["word", "cell", "slide"],
-      buttons: [
-        {
-          text: "OK",
-          primary: true,
-          textLocale: {
-            fr: "OK"
-          }
-        }
-      ],
-      size: [440, 280]
-    };
-    if (!settingsPluginWindow) {
-      settingsPluginWindow = new window.Asc.PluginWindow();
-      settingsPluginWindow.attachEvent("onClose", function () {
-        if (window.LstjoRuntime && typeof window.LstjoRuntime.syncFromEditorBridge === "function") {
-          window.LstjoRuntime.syncFromEditorBridge();
-        }
-        refreshAfterSettingsSave().catch(function () {});
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.openOnlyturgieSettingsWindow === "function") {
+      window.LstjoRuntime.openOnlyturgieSettingsWindow({
+        onClose: function () {
+          refreshAfterSettingsSave().catch(function () {
+            window.lstjoReloadAutocompleteFromStorage();
+          });
+        },
       });
     }
-    settingsPluginWindow.show(variation);
   }
 
   function registerSettingsContextMenu() {
@@ -397,6 +417,51 @@
     }
     if (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.attachEvent === "function") {
       window.Asc.plugin.attachEvent("onlyturgie.settingsSaved", onSettingsSavedInBackground);
+      window.Asc.plugin.attachEvent("onlyturgie.openSettings", function () {
+        openOnlyturgieSettingsWindow();
+      });
+      window.Asc.plugin.attachEvent("onlyturgie.autocompleteToggled", function (data) {
+        if (data && typeof data.enabled === "boolean" && window.LstjoRuntime &&
+            typeof window.LstjoRuntime.writeAutocompleteEnabledPreference === "function") {
+          window.LstjoRuntime.writeAutocompleteEnabledPreference(data.enabled);
+        }
+        hideInputHelperIfDisabled();
+      });
+      window.Asc.plugin.attachEvent("onlyturgie.catalogUpdated", function () {
+        if (typeof window.lstjoReloadAutocompleteFromStorage === "function") {
+          window.lstjoReloadAutocompleteFromStorage();
+        }
+      });
+      // Pied du panneau : le panneau (fenêtre enfant) demande le texte et l’identité du document.
+      window.Asc.plugin.attachEvent("onlyturgie.collectDocument", function (data) {
+        var reqId = data && data.reqId;
+        if (!window.LstjoRuntime || typeof window.LstjoRuntime.collectDocumentSnapshot !== "function") return;
+        window.LstjoRuntime.collectDocumentSnapshot(function (snapshot) {
+          snapshot.reqId = reqId;
+          window.LstjoRuntime.forwardEventToPanelWindow("onlyturgie.documentSnapshot", snapshot);
+        });
+      });
+      window.Asc.plugin.attachEvent("onlyturgie.panelClosed", function () {
+        if (
+          window.LstjoRuntime &&
+          typeof window.LstjoRuntime.scheduleRegisterOnlyturgiePanelRightNav === "function"
+        ) {
+          window.LstjoRuntime.scheduleRegisterOnlyturgiePanelRightNav();
+        }
+      });
+    }
+  }
+
+  function registerPanelAutoOpenOnActivation() {
+    if (window.lstjoPanelActivationOpenRegistered) {
+      return;
+    }
+    window.lstjoPanelActivationOpenRegistered = true;
+    if (
+      window.LstjoRuntime &&
+      typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnPluginActivation === "function"
+    ) {
+      window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnPluginActivation();
     }
   }
 
@@ -409,7 +474,15 @@
       if (window.LstjoRuntime && typeof window.LstjoRuntime.resetPanelAutoOpenForDocument === "function") {
         window.LstjoRuntime.resetPanelAutoOpenForDocument();
       }
-      if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+      if (
+        window.LstjoRuntime &&
+        typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnDocument === "function"
+      ) {
+        window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnDocument();
+      } else if (
+        window.LstjoRuntime &&
+        typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function"
+      ) {
         window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
       }
     }
@@ -424,6 +497,10 @@
       var sid = ids[i];
       var url = urlsBySource[sid];
       if (!url) continue;
+      // Diapos : dossier « Diapos » à côté du docx ouvert (+ Visionneuse/Commun) — l’API a besoin du document.
+      if (sid.toLowerCase() === "diapo" && window.LstjoRuntime && window.LstjoRuntime.withDocumentContext) {
+        url = window.LstjoRuntime.withDocumentContext(url);
+      }
       try {
         var response = window.LstjoRuntime && window.LstjoRuntime.fetchLiturgie
           ? await window.LstjoRuntime.fetchLiturgie(url)
@@ -457,7 +534,17 @@
       registerSettingsContextMenu();
       registerSettingsSavedListener();
       registerPanelAutoOpenOnDocument();
-      if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+      registerPanelAutoOpenOnActivation();
+      hideInputHelperIfDisabled();
+      if (
+        window.LstjoRuntime &&
+        typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnPluginActivation === "function"
+      ) {
+        window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnPluginActivation();
+      } else if (
+        window.LstjoRuntime &&
+        typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function"
+      ) {
         window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
       }
     }
@@ -467,8 +554,23 @@
     if (window.LstjoRuntime && typeof window.LstjoRuntime.resetPanelAutoOpenForDocument === "function") {
       window.LstjoRuntime.resetPanelAutoOpenForDocument();
     }
-    if (window.LstjoRuntime && typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function") {
+    if (
+      window.LstjoRuntime &&
+      typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnDocument === "function"
+    ) {
+      window.LstjoRuntime.scheduleEnsureOnlyturgiePanelOnDocument();
+    } else if (
+      window.LstjoRuntime &&
+      typeof window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible === "function"
+    ) {
       window.LstjoRuntime.scheduleEnsureOnlyturgiePanelVisible();
+    }
+  };
+
+  /** Le panneau est une fenêtre enfant : il ne reçoit pas les événements éditeur, on les lui relaie. */
+  window.Asc.plugin.event_onTargetPositionChanged = function () {
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.forwardEventToPanelWindow === "function") {
+      window.LstjoRuntime.forwardEventToPanelWindow("onTargetPositionChanged", {});
     }
   };
 
@@ -480,13 +582,52 @@
     this.executeCommand("close", "");
   };
 
+  function replaceContentControlText(internalId, text) {
+    window.Asc.scope.lstjoCcId = internalId;
+    window.Asc.scope.lstjoCcText = text;
+    window.Asc.plugin.callCommand(
+      function () {
+        var id = Asc.scope.lstjoCcId;
+        var txt = Asc.scope.lstjoCcText;
+        var all = Api.GetDocument().GetAllContentControls() || [];
+        for (var i = 0; i < all.length; i++) {
+          var cc = all[i];
+          if (String(cc.GetInternalId()) !== id) continue;
+          if (cc.GetClassType() === "inlineLvlSdt") {
+            cc.RemoveAllElements();
+            cc.AddText(txt);
+          } else {
+            var content = cc.GetContent();
+            content.RemoveAllElements();
+            var p = Api.CreateParagraph();
+            p.AddText(txt);
+            content.Push(p);
+          }
+          return true;
+        }
+        return false;
+      },
+      false,
+      true,
+      function (found) {
+        if (!found) window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [text, "entirely"]);
+      }
+    );
+  }
+
   window.Asc.plugin.inputHelper_onSelectItem = function (item) {
     if (!item || !item.text) return;
-    if (getCompletionScope() === "word") {
+    var et = window.Asc.plugin.info && window.Asc.plugin.info.editorType;
+    if (getCompletionScope() === "word" || et === "cell") {
+      // Tableur : pas de ReplaceCurrentSentence ni de contrôle de contenu → InputText remplace la saisie en cours.
       var toReplace = window.Asc.plugin.lastReplaceTarget;
       if (toReplace === undefined || toReplace === null) toReplace = getReplaceSegment();
       if (toReplace === "") return;
       window.Asc.plugin.executeMethod("InputText", [item.text, toReplace]);
+    } else if (activeContentControlId) {
+      // Dans un contrôle de contenu : remplacer seulement son contenu (ReplaceCurrentSentence
+      // déborde sur la phrase entière autour d’un contrôle inline, ex. « Animateur : [nom] »).
+      replaceContentControlText(activeContentControlId, item.text);
     } else {
       window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [item.text, "entirely"]);
     }
@@ -501,26 +642,33 @@
 
   window.Asc.plugin.event_onInputHelperInput = function (data) {
     if (!data) return;
+    if (!isAutocompleteEnabled()) {
+      hideInputHelperIfDisabled();
+      return;
+    }
 
     syncFullTextFromData(data);
 
     var seq = ++inputEventSeq;
     var minChars = getMinChars();
+    var isSheet = !!(window.Asc.plugin.info && window.Asc.plugin.info.editorType === "cell");
 
     function showSuggestionsForQuery(query) {
       if (seq !== inputEventSeq) return;
-      query = (query || "").trim();
-      if (query.length < minChars) {
+      var rawQuery = String(query || "");
+      query = rawQuery.trim();
+      // Tableur : un ou plusieurs espaces seuls dans la cellule → liste complète (le clic remplace les espaces).
+      var spaceTrigger = isSheet && !query && /^ +$/.test(rawQuery);
+      if (!spaceTrigger && query.length < minChars) {
         window.Asc.plugin.getInputHelper().unShow();
         return;
       }
+      var replaceTarget = spaceTrigger ? rawQuery : query;
 
-      window.Asc.plugin.lastReplaceTarget = query;
+      window.Asc.plugin.lastReplaceTarget = replaceTarget;
 
-      window.Asc.plugin.executeMethod("GetCurrentContentControlPr", [], function (obj) {
+      function showForSource(sourceId) {
         if (seq !== inputEventSeq) return;
-
-        var sourceId = resolveActiveSourceId(obj);
         var variants = filterItemsForQuery(sourceId, query);
 
         if (!variants.length) {
@@ -534,23 +682,63 @@
         }
 
         window.Asc.plugin.getInputHelper().setItems(items);
-        window.Asc.plugin.lastReplaceTarget = query;
+        window.Asc.plugin.lastReplaceTarget = replaceTarget;
         var sizes = getInputHelperSize();
         window.Asc.plugin.getInputHelper().show(sizes.w, sizes.h, false);
+      }
+
+      window.Asc.plugin.executeMethod("GetCurrentContentControlPr", [], function (obj) {
+        if (seq !== inputEventSeq) return;
+        activeContentControlId = obj && obj.InternalId ? String(obj.InternalId) : "";
+        var fromTag = obj && obj.Tag ? parseSourceFromTag(String(obj.Tag).trim()) : null;
+        if (fromTag || obj) {
+          showForSource(fromTag || getDefaultSourceId());
+          return;
+        }
+        // Hors contrôle de contenu : « Diapo » dans la cellule de gauche → catalogue des diapos.
+        var rt = window.LstjoRuntime;
+        if (!rt || typeof rt.readCursorCellContext !== "function") {
+          showForSource(getDefaultSourceId());
+          return;
+        }
+        var et = window.Asc.plugin.info && window.Asc.plugin.info.editorType;
+        if (et === "cell") {
+          // Tableur : en-tête de colonne, puis cellule de gauche (via tagMap / noms de groupe).
+          rt.readCursorCellContext(function (ctx) {
+            if (seq !== inputEventSeq) return;
+            var id =
+              parseSourceFromTag(ctx.header || "") ||
+              parseSourceFromTag(ctx.left || "") ||
+              (rt.isDiapoCellLabel(ctx.left) ? findSourceIdByName("diapo") : null);
+            showForSource(id || getDefaultSourceId());
+          });
+          return;
+        }
+        // Panneau ouvert : il a déjà lu la cellule — pas de callCommand supplémentaire.
+        var hint = typeof rt.readCursorCellHint === "function" ? rt.readCursorCellHint(3000) : null;
+        if (hint) {
+          showForSource((hint.diapo && findSourceIdByName("diapo")) || getDefaultSourceId());
+          return;
+        }
+        rt.readCursorCellContext(function (ctx) {
+          if (seq !== inputEventSeq) return;
+          var diapoId = rt.isDiapoCellLabel(ctx.left) ? findSourceIdByName("diapo") : null;
+          showForSource(diapoId || getDefaultSourceId());
+        });
       });
     }
 
-    if (getCompletionScope() === "word") {
+    if (getCompletionScope() === "word" || isSheet) {
+      // Tableur : le texte saisi dans la cellule suffit (pas de phrase courante), espaces conservés.
       showSuggestionsForQuery(getReplaceSegment());
       return;
     }
 
     window.Asc.plugin.executeMethod("GetCurrentSentence", ["entirely"], function (sentence) {
       if (seq !== inputEventSeq) return;
-      var q = (sentence || "").trim();
-      if (!q) {
-        q = getReplaceSegment().trim();
-      }
+      var segment = getReplaceSegment().trim();
+      var sentenceTrim = (sentence || "").trim();
+      var q = segment || sentenceTrim;
       showSuggestionsForQuery(q);
     });
   };

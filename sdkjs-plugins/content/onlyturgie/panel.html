@@ -32,25 +32,165 @@
         box-sizing: border-box;
       }
       /*
-        Statut (auto) + zone partagée (1fr) : même principe que l’ancienne grille 7fr/3fr,
-        fiable dans l’iframe OnlyOffice. Le ratio PDF/Présentation utilise des « fr », pas des %,
-        pour que le partage marche aussi quand le panneau est vide (pas besoin de PDF/PPT chargés).
+        Colonne flex, pas une grille à 4 pistes : le bandeau identifiants est display:none
+        tant que l’hôte et le jeton sont là. Une piste « auto » vide faisait glisser
+        #split-wrap sur cette piste, et le 1fr restant restait un grand vide sous le panneau.
       */
       #root {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr);
+        display: flex;
+        flex-direction: column;
         height: 100%;
         min-height: 0;
         box-sizing: border-box;
+        overflow: hidden;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: stretch;
+        gap: 6px;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--border);
+        background: #fafafa;
+        flex-shrink: 0;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+        position: relative;
+        z-index: 2;
+      }
+      .panel-header-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .panel-header button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        color: #333;
+      }
+      .panel-header button:hover {
+        background: #f0f0f0;
+      }
+      .panel-header button svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      .panel-autocomplete-toggle {
+        width: auto;
+        max-width: 100%;
+        flex: 1 1 auto;
+        min-width: 0;
+        height: auto;
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.25;
+        gap: 6px;
+        text-align: left;
+        white-space: nowrap;
+      }
+      #panel-autocomplete-toggle-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .panel-autocomplete-toggle:hover {
+        filter: brightness(0.97);
+      }
+      .panel-autocomplete-toggle.is-on {
+        background: #e8f5ec;
+        border-color: #3d8b5c;
+        color: #1b5e34;
+      }
+      .panel-autocomplete-toggle.is-off {
+        background: #f3ecec;
+        border-color: #b85454;
+        color: #7a2e2e;
+      }
+      .panel-autocomplete-toggle-dot {
+        flex: 0 0 auto;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .panel-autocomplete-toggle.is-on .panel-autocomplete-toggle-dot {
+        box-shadow: 0 0 0 2px rgba(27, 94, 52, 0.25);
+      }
+      .panel-autocomplete-toggle.is-off .panel-autocomplete-toggle-dot {
+        opacity: 0.85;
+      }
+      .panel-chant-api-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #fff;
+      }
+      .panel-chant-api-status .panel-chant-api-icon {
+        width: 16px;
+        height: 16px;
+        display: block;
+      }
+      .panel-chant-api-status--loading .panel-chant-api-icon {
+        box-sizing: border-box;
+        border: 2px solid #c5c5c5;
+        border-top-color: #2a6b9b;
+        border-radius: 50%;
+        animation: panel-chant-api-spin 0.75s linear infinite;
+      }
+      .panel-chant-api-status--ok {
+        background: #e8f5ec;
+        border-color: #3d8b5c;
+        color: #1b5e34;
+      }
+      .panel-chant-api-status--error {
+        background: #f3ecec;
+        border-color: #b85454;
+        color: #7a2e2e;
+      }
+      @keyframes panel-chant-api-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .panel-version {
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+        margin-left: 2px;
       }
       #split-wrap {
+        flex: 1 1 auto;
         min-height: 0;
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        /* 3fr / 2fr = 60 % / 40 % (hors barre de séparation) */
-        grid-template-rows: minmax(0, 3fr) var(--split-gutter-h) minmax(0, 2fr);
+        /* 1fr / 1fr : PDF et Présentation à la même hauteur ; séparateur ensuite */
+        grid-template-rows: minmax(0, 1fr) var(--split-gutter-h) minmax(0, 1fr);
         align-content: stretch;
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
       }
       #pane-pdf,
       #pane-ppt {
@@ -84,6 +224,34 @@
         border-bottom: 1px solid var(--border);
         font-weight: 600;
         color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .pane-head-label {
+        flex: 0 0 auto;
+      }
+      .pane-file-count {
+        flex: 1 1 auto;
+        font-weight: 500;
+        font-size: 11px;
+        color: #444;
+      }
+      .pane-file-count[hidden],
+      .pane-file-select[hidden] {
+        display: none !important;
+      }
+      .pane-file-select {
+        flex: 1 1 100%;
+        max-width: 100%;
+        font-size: 11px;
+        font-weight: 400;
+        padding: 2px 4px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        background: #fff;
+        color: #222;
       }
       .pane-body {
         flex: 1 1 auto;
@@ -91,13 +259,17 @@
         position: relative;
         background: var(--bg-empty);
       }
-      .pane-body iframe {
+      .pane-body iframe,
+      .pane-body .oo-pane-editor {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
         border: none;
         background: #fff;
+      }
+      .pane-body .oo-pane-editor[hidden] {
+        display: none !important;
       }
       .empty-msg {
         position: absolute;
@@ -111,23 +283,275 @@
         box-sizing: border-box;
       }
       .panel-status {
-        padding: 4px 8px;
-        font-size: 11px;
-        color: var(--muted);
+        padding: 6px 8px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #222;
         border-bottom: 1px solid var(--border);
-        background: #f0f0f0;
+        background: #fafafa;
         min-height: 1.2em;
+        max-height: 5em;
+        overflow: auto;
+        word-break: break-word;
+      }
+      .panel-credentials {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        font-size: 11px;
+        color: #5a3e00;
+        background: #fff8e6;
+        border-bottom: 1px solid #e6d9a8;
+      }
+      .panel-credentials[hidden] {
+        display: none !important;
+      }
+      .panel-credentials button {
+        flex: 0 0 auto;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid #c8a840;
+        border-radius: 4px;
+        background: #fff;
+        color: #333;
+      }
+      .panel-credentials button:hover {
+        background: #fff3cc;
+      }
+      .panel-footer {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border-top: 1px solid var(--border);
+        background: #fafafa;
+      }
+      .panel-footer-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #fff;
+        color: #333;
+        cursor: pointer;
+      }
+      .panel-footer-btn:hover:not(:disabled) {
+        background: #f0f0f0;
+      }
+      .panel-footer-btn:disabled {
+        cursor: progress;
+        opacity: 0.6;
+      }
+      .panel-footer-btn.is-busy svg {
+        animation: panel-chant-api-spin 1s linear infinite;
+      }
+      .panel-footer-btn svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+      .result-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        box-sizing: border-box;
+      }
+      .result-overlay[hidden] {
+        display: none !important;
+      }
+      .result-dialog {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 520px;
+        max-height: 100%;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+      }
+      .result-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        background: #fafafa;
+        font-weight: 600;
+      }
+      .result-head h2 {
+        flex: 1 1 auto;
+        margin: 0;
+        font-size: 13px;
+      }
+      .result-close {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+      }
+      .result-body {
+        overflow: auto;
+        padding: 8px 10px 10px;
+        line-height: 1.4;
+      }
+      .result-summary {
+        margin: 0 0 6px;
+        color: var(--muted);
+      }
+      .result-section-title {
+        margin: 10px 0 4px;
+        font-weight: 600;
+      }
+      .result-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .result-list li {
+        padding: 2px 6px;
+        margin: 2px 0;
+        border-left: 3px solid transparent;
+        border-radius: 2px;
+        word-break: break-word;
+      }
+      .result-ok {
+        color: #1b5e34;
+        background: #e8f5ec;
+        border-left-color: #3d8b5c !important;
+      }
+      .result-info {
+        color: #1d4f7a;
+        background: #e8f0f8;
+        border-left-color: #2a6b9b !important;
+      }
+      .result-error {
+        color: #7a2e2e;
+        background: #f3ecec;
+        border-left-color: #b85454 !important;
+      }
+      .result-file {
+        margin: 0;
+        padding: 6px 8px;
+        max-height: 40vh;
+        overflow: auto;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+        white-space: pre;
+        background: #f5f5f5;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+      }
+      .result-empty {
+        color: var(--muted);
+        font-style: italic;
+      }
+      /* Le thème sombre de l’éditeur (plugins-ui) recolore h2, pre, li, div… en clair : la popup reste
+         sur fond clair, on fixe donc ses couleurs avec une spécificité supérieure. */
+      #result-overlay .result-dialog,
+      #result-overlay .result-head,
+      #result-overlay .result-head h2,
+      #result-overlay .result-body,
+      #result-overlay .result-section-title,
+      #result-overlay .result-list li,
+      #result-overlay .result-close {
+        color: #222 !important;
+      }
+      #result-overlay .result-summary,
+      #result-overlay .result-empty {
+        color: var(--muted) !important;
+      }
+      #result-overlay .result-file {
+        color: #222 !important;
+        background: #f5f5f5 !important;
+      }
+      #result-overlay .result-list li.result-ok {
+        color: #1b5e34 !important;
+      }
+      #result-overlay .result-list li.result-info {
+        color: #1d4f7a !important;
+      }
+      #result-overlay .result-list li.result-error {
+        color: #7a2e2e !important;
       }
     </style>
-    <script src="scripts/lstjo-runtime.js?v=2.1.19"></script>
-    <script src="scripts/panel.js?v=2.1.19"></script>
+    <script src="scripts/lstjo-runtime.js?v=2.1.50"></script>
+    <script src="scripts/panel.js?v=2.1.50"></script>
   </head>
   <body>
     <div id="root">
+      <header id="panel-header" class="panel-header" aria-label="En-tête Onlyturgie">
+        <div class="panel-header-actions">
+          <span
+            id="panel-chant-api-status"
+            class="panel-chant-api-status panel-chant-api-status--idle"
+            role="status"
+            aria-live="polite"
+            title="API chant : en attente"
+            aria-label="API chant : en attente"
+          >
+            <span class="panel-chant-api-icon" aria-hidden="true"></span>
+          </span>
+          <button
+            type="button"
+            id="panel-autocomplete-toggle"
+            class="panel-autocomplete-toggle is-on"
+            role="switch"
+            aria-checked="true"
+            title="Cliquer pour désactiver l’autocomplétion liturgique"
+            aria-label="Autocomplétion : activée"
+          >
+            <span class="panel-autocomplete-toggle-dot" aria-hidden="true"></span>
+            <span id="panel-autocomplete-toggle-label">Auto. : activée</span>
+          </button>
+          <button
+            type="button"
+            id="panel-open-settings-gear"
+            title="Paramètres Onlyturgie"
+            aria-label="Paramètres Onlyturgie"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.63-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.63.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.71 1.63.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"
+              />
+            </svg>
+          </button>
+          <span id="panel-plugin-version" class="panel-version" aria-label="Version du plugin"></span>
+        </div>
+      </header>
       <div id="panel-status" class="panel-status" aria-live="polite"></div>
+      <div id="panel-credentials" class="panel-credentials" hidden>
+        <span>Hôte ou jeton API manquant.</span>
+        <button type="button" id="panel-open-settings">Paramètres (hôte / jeton)…</button>
+      </div>
       <div id="split-wrap">
         <section class="pane" id="pane-pdf" aria-label="PDF">
-          <div class="pane-head">PDF</div>
+          <div class="pane-head">
+            <span class="pane-head-label">PDF</span>
+            <span id="count-pdf" class="pane-file-count" hidden></span>
+            <select id="select-pdf" class="pane-file-select" hidden aria-label="Choisir un PDF"></select>
+          </div>
           <div class="pane-body">
             <div class="empty-msg" id="empty-pdf">Chargement…</div>
             <iframe id="iframe-pdf" title="Document PDF" hidden></iframe>
@@ -140,12 +564,67 @@
           aria-label="Redimensionner PDF et Présentation"
         ></div>
         <section class="pane" id="pane-ppt" aria-label="Présentation">
-          <div class="pane-head">Présentation</div>
+          <div class="pane-head">
+            <span class="pane-head-label">Présentation</span>
+            <span id="count-ppt" class="pane-file-count" hidden></span>
+            <select id="select-ppt" class="pane-file-select" hidden aria-label="Choisir une présentation"></select>
+          </div>
           <div class="pane-body">
             <div class="empty-msg" id="empty-ppt">Chargement…</div>
             <iframe id="iframe-ppt" title="Présentation" hidden></iframe>
+            <div id="oo-ppt-editor" class="oo-pane-editor" hidden aria-label="Aperçu présentation ONLYOFFICE"></div>
           </div>
         </section>
+      </div>
+      <footer id="panel-footer" class="panel-footer" aria-label="Actions sur le document">
+        <button
+          type="button"
+          class="panel-footer-btn"
+          data-menu-action="partitions"
+          title="Récupérer les partitions"
+          aria-label="Récupérer les partitions"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              fill="currentColor"
+              d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5a2.5 2.5 0 1 1-2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"
+            />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="panel-footer-btn"
+          data-menu-action="playlist"
+          title="Générer playlist"
+          aria-label="Générer playlist"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M19 9H2v2h17V9zm0-4H2v2h17V5zM2 15h13v-2H2v2zm15-2v6l5-3-5-3z" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="panel-footer-btn"
+          data-menu-action="diaporama"
+          title="Générer diaporama"
+          aria-label="Générer diaporama"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              fill="currentColor"
+              d="M10 8v8l5-4-5-4zm9-5H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"
+            />
+          </svg>
+        </button>
+      </footer>
+      <div id="result-overlay" class="result-overlay" hidden>
+        <div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+          <div class="result-head">
+            <h2 id="result-title">Résultat</h2>
+            <button type="button" id="result-close" class="result-close" title="Fermer" aria-label="Fermer">×</button>
+          </div>
+          <div id="result-body" class="result-body"></div>
+        </div>
       </div>
     </div>
   </body>

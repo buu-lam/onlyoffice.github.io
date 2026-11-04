@@ -95,6 +95,11 @@
     });
     if (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.attachEvent === "function") {
       window.Asc.plugin.attachEvent("onlyturgie.settingsSaved", onSettingsSaved);
+      window.Asc.plugin.attachEvent("onlyturgie.catalogUpdated", function () {
+        if (typeof window.lstjoReloadAutocompleteFromStorage === "function") {
+          window.lstjoReloadAutocompleteFromStorage();
+        }
+      });
     }
   }
 

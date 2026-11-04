@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Installer Onlyturgie</title>
+  <style>
+    :root { --bg:#fafaf7; --fg:#1f2328; --muted:#5b616b; --accent:#7a3e9d; --card:#fff; --line:#e3e1da; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#16171a; --fg:#e8e6e1; --muted:#a3a7ad; --accent:#c79ae6; --card:#1f2125; --line:#33353a; } }
+    body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, sans-serif; }
+    main { max-width:680px; margin:0 auto; padding:32px 16px 64px; }
+    h1 { font-size:1.6rem; margin:0 0 4px; }
+    .sub { color:var(--muted); margin:0 0 28px; }
+    ol { padding:0; list-style:none; counter-reset:s; }
+    li { counter-increment:s; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 16px 16px 60px; margin:0 0 14px; position:relative; }
+    li::before { content:counter(s); position:absolute; left:16px; top:14px; width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; font-weight:700; }
+    li h2 { font-size:1.05rem; margin:2px 0 6px; }
+    li p { margin:6px 0; }
+    .bm { display:inline-block; margin:10px 0 4px; padding:10px 18px; border-radius:999px; background:var(--accent); color:#fff; font-weight:700; text-decoration:none; cursor:grab; }
+    .hint { color:var(--muted); font-size:.9rem; }
+    code { background:var(--line); padding:1px 5px; border-radius:4px; overflow-wrap:anywhere; }
+    a { color:var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Installer Onlyturgie</h1>
+  <p class="sub">Autocomplétion des chants et aperçus PDF/PPT dans OnlyOffice. Aucun mot de passe ni jeton à recopier.</p>
+  <ol>
+    <li>
+      <h2>Ajouter le bouton à vos favoris</h2>
+      <p>Faites glisser ce bouton dans la barre de favoris de votre navigateur :</p>
+      <a class="bm" data-onlyturgie-bookmarklet href="#" title="Glissez-moi dans la barre de favoris">⛪ Connecter Onlyturgie</a>
+      <p class="hint">Barre de favoris invisible ? <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>B</kbd> (Chrome, Edge, Firefox).</p>
+    </li>
+    <li>
+      <h2>Ouvrir le Gestionnaire de modules</h2>
+      <p>Ouvrez un document dans Nextcloud, onglet <b>Modules complémentaires</b> → <b>Gestionnaire de modules</b>. Laissez cette fenêtre ouverte.</p>
+      <p class="hint">Inutile d’ajouter un magasin ou de passer en mode développeur : le favori s’en charge.</p>
+    </li>
+    <li>
+      <h2>Cliquer sur le favori</h2>
+      <p>Cliquez sur <b>⛪ Connecter Onlyturgie</b> dans la barre de favoris. Il installe Onlyturgie et le relie à votre compte.</p>
+      <p>Un message confirme. C’est fini : à faire une seule fois par navigateur. Plus tard, si Onlyturgie demande à être reconnecté, recliquez simplement sur le favori (le Gestionnaire n’est plus nécessaire).</p>
+      <p class="hint">Votre compte Nextcloud doit appartenir à l’un des groupes : admin, animateurs, musiciens ou informatique.</p>
+    </li>
+  </ol>
+</main>
+<script src="scripts/connect-bookmarklet.js?v=2.1.50"></script>
+</body>
+</html>

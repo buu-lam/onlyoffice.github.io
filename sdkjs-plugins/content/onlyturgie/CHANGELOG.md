@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.51
+
+- Partie arrière-plan déclarée `"autostart": true` : après installation, Onlyturgie démarre tout seul au lieu de rester « désactivé » dans « Plugins d’arrière-plan » (Document Server récent ; sinon l’activer une fois à la main dans ce menu).
+
 ## 2.1.50
 
 - Connexion sans jeton à recopier : page `install.html` avec un favori « ⛪ Connecter Onlyturgie ». Sur la page Nextcloud (document ouvert, panneau Onlyturgie ouvert), il obtient un jeton personnel (`/apps/liturgie/api/onlyturgie-token`, réservé aux groupes `api_chants.groupes_session`) et le transmet au plugin par `postMessage` (origine vérifiée).

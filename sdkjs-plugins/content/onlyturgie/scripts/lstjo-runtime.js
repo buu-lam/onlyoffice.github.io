@@ -1275,7 +1275,33 @@
    */
   function onSetupMessage(ev) {
     var d = ev && ev.data;
-    if (!d || typeof d !== "object" || d.type !== "onlyturgie:setup") return;
+    if (!d || typeof d !== "object") return;
+    if (d.type === "onlyturgie:reset") {
+      // Remise à zéro pour test de bout en bout : seulement depuis l'hôte API enregistré (ou si aucun).
+      var cur = getApiHost();
+      var allowed = true;
+      try {
+        allowed = !cur || new URL(cur).origin === ev.origin;
+      } catch (eR) {
+        allowed = false;
+      }
+      if (allowed) {
+        try {
+          [STORAGE_API_TOKEN_KEY, STORAGE_API_HOST_KEY, STORAGE_AUTH_MODE_KEY, STORAGE_URLS_KEY].forEach(function (k) {
+            localStorage.removeItem(k);
+          });
+        } catch (eR2) {
+          /* ignore */
+        }
+      }
+      try {
+        if (ev.source) ev.source.postMessage({ type: "onlyturgie:reset-ack", ok: allowed }, ev.origin);
+      } catch (eR3) {
+        /* ignore */
+      }
+      return;
+    }
+    if (d.type !== "onlyturgie:setup") return;
     var host = normalizeHost(d.apiHost);
     var token = String(d.token || "").trim();
     var ok = false;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.52
+
+- Message `onlyturgie:reset` (bouton « Réinitialiser » de la page Liturgie) : efface jeton, hôte, mode et URL enregistrés, pour refaire un test de bout en bout.
+- Page Liturgie : activation dans un document ouvert en cadre (bouton « Connecter »), sans favori.
+
 ## 2.1.51
 
 - Partie arrière-plan déclarée `"autostart": true` : après installation, Onlyturgie démarre tout seul au lieu de rester « désactivé » dans « Plugins d’arrière-plan » (Document Server récent ; sinon l’activer une fois à la main dans ce menu).

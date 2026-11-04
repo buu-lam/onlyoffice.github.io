@@ -89,7 +89,42 @@
       });
   }
 
+  /** Remise à zéro (tests de bout en bout) : efface la config du plugin et demande sa désinstallation. */
+  function onlyturgieReset() {
+    var GUID = "asc.{F7A4C9AF-2D3B-4C8C-A8D9-2F3A4B5C6D7E}";
+    var acks = 0;
+    var onAck = function (e) {
+      if (e.data && e.data.type === "onlyturgie:reset-ack" && e.data.ok) acks++;
+    };
+    function broadcast(msg) {
+      (function walk(w, depth) {
+        try { w.postMessage(msg, "*"); } catch (e) {}
+        if (depth > 6) return;
+        for (var i = 0; i < w.frames.length; i++) {
+          try { walk(w.frames[i], depth + 1); } catch (e2) {}
+        }
+      })(window, 0);
+    }
+    window.addEventListener("message", onAck);
+    broadcast({ type: "onlyturgie:reset" });
+    // Désinstallation : reçue seulement si le Gestionnaire de modules est ouvert.
+    broadcast(JSON.stringify({ type: "remove", guid: GUID, backup: false }));
+    setTimeout(function () {
+      window.removeEventListener("message", onAck);
+      alert((acks ? "Configuration Onlyturgie effacée.\n" : "Onlyturgie n’a pas répondu (déjà absent ou désactivé).\n") +
+        "Si le Gestionnaire de modules était ouvert, Onlyturgie y a été désinstallé.\nRechargez la page pour repartir de zéro.");
+    }, 2000);
+  }
+
   function init() {
+    var connectBtns = document.querySelectorAll('[data-onlyturgie-connect]');
+    for (var c = 0; c < connectBtns.length; c++) {
+      connectBtns[c].addEventListener('click', function (e) { e.preventDefault(); onlyturgieBookmarklet(); });
+    }
+    var resetBtns = document.querySelectorAll('[data-onlyturgie-reset]');
+    for (var r = 0; r < resetBtns.length; r++) {
+      resetBtns[r].addEventListener('click', function (e) { e.preventDefault(); onlyturgieReset(); });
+    }
     var links = document.querySelectorAll('[data-onlyturgie-bookmarklet]');
     var href = 'javascript:(' + encodeURIComponent(onlyturgieBookmarklet.toString()) + ')();void 0';
     for (var i = 0; i < links.length; i++) {

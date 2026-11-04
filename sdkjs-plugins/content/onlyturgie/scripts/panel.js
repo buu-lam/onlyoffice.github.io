@@ -1064,6 +1064,7 @@
     var panel = getPanelCfg();
     if (panel.pptUseOfficeViewer !== false) return;
     var ds = typeof panel.documentServerUrl === "string" ? panel.documentServerUrl.trim() : "";
+    if (!ds) ds = getDocumentServerUrlForPanel();
     if (!ds) return;
     ensureDocsApiScript(ds, function () {
       /* erreurs gérées au premier vrai affichage */

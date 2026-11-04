@@ -1332,7 +1332,30 @@
     /* ignore */
   }
 
+  /**
+   * Base du Document Server qui exécute le plugin, déduite de l'URL de l'éditeur (referrer) :
+   * « https://ds.exemple/9.4.0-abc/web-apps/apps/… » → « https://ds.exemple/9.4.0-abc/ ».
+   * Évite toute URL de Document Server codée en dur dans config.json.
+   */
+  function getEditorDocumentServerOrigin() {
+    var ref = "";
+    try {
+      ref = String(global.document && global.document.referrer || "");
+    } catch (e) {
+      ref = "";
+    }
+    if (!ref) return "";
+    var i = ref.indexOf("/web-apps/");
+    if (i > 0) return ref.slice(0, i + 1);
+    try {
+      return new URL(ref).origin + "/";
+    } catch (e2) {
+      return "";
+    }
+  }
+
   global.LstjoRuntime = {
+    getEditorDocumentServerOrigin: getEditorDocumentServerOrigin,
     publishCursorCellHint: publishCursorCellHint,
     readCursorCellHint: readCursorCellHint,
     getDocumentContext: getDocumentContext,

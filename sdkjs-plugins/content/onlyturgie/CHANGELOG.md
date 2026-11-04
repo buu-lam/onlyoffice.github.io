@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.54
+
+- Plus d’URL de Document Server de dev (`onlyoffice.test`) codée en dur : `lstjo.panel.documentServerUrl` est vide par défaut ; le panneau utilise l’URL fournie par Liturgie (connecteur OnlyOffice de Nextcloud), sinon celle de l’éditeur qui exécute le plugin (`document.referrer`).
+
 ## 2.1.53
 
 - Après « Connecter Onlyturgie », le panneau et l’autocomplétion relisent aussitôt hôte et jeton (plus de « Hôte ou jeton API manquant » jusqu’au rechargement).

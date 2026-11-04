@@ -2347,7 +2347,14 @@
           return;
         }
       }
-      if (data && data.type === "onlyturgie.settingsSaved") {
+      // « Connecter Onlyturgie » (page Liturgie ou favori) : lstjo-runtime vient d'enregistrer hôte + jeton.
+      if (data && (data.type === "onlyturgie.settingsSaved" || data.type === "onlyturgie:setup" || data.type === "onlyturgie:reset")) {
+        setTimeout(onPanelSettingsSaved, 0);
+      }
+    });
+    // Configuration écrite par une autre frame du plugin (partie arrière-plan, autre panneau).
+    window.addEventListener("storage", function (ev) {
+      if (ev && typeof ev.key === "string" && /^onlyturgie\.(apiToken|apiHost|authMode)$/.test(ev.key)) {
         onPanelSettingsSaved();
       }
     });

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.53
+
+- Après « Connecter Onlyturgie », le panneau et l’autocomplétion relisent aussitôt hôte et jeton (plus de « Hôte ou jeton API manquant » jusqu’au rechargement).
+
 ## 2.1.52
 
 - Message `onlyturgie:reset` (bouton « Réinitialiser » de la page Liturgie) : efface jeton, hôte, mode et URL enregistrés, pour refaire un test de bout en bout.

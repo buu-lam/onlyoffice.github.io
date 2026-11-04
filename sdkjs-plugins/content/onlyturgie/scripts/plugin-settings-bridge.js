@@ -92,6 +92,10 @@
       if (data && data.type === "onlyturgie.settingsSaved") {
         onSettingsSaved();
       }
+      // « Connecter Onlyturgie » : lstjo-runtime vient d'enregistrer hôte + jeton → recharger les catalogues.
+      if (data && (data.type === "onlyturgie:setup" || data.type === "onlyturgie:reset")) {
+        setTimeout(onSettingsSaved, 0);
+      }
     });
     if (window.Asc && window.Asc.plugin && typeof window.Asc.plugin.attachEvent === "function") {
       window.Asc.plugin.attachEvent("onlyturgie.settingsSaved", onSettingsSaved);

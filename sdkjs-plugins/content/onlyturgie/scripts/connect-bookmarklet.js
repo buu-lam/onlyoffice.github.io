@@ -79,7 +79,9 @@
         } else if (state === "installed") {
           alert("Onlyturgie est installé et connecté (compte " + user + "). Fermez le Gestionnaire de modules : le bouton Onlyturgie est dans l’onglet Modules complémentaires.");
         } else {
-          alert("Onlyturgie n’est pas encore installé.\n\n1. Dans le document, onglet « Modules complémentaires », ouvrez le « Gestionnaire de modules ».\n2. Laissez-le ouvert et recliquez sur ce favori.");
+          alert("Onlyturgie ne répond pas encore.\n\n" +
+            "• Si le Gestionnaire de modules n’était pas ouvert : ouvrez-le (onglet « Modules complémentaires »), laissez-le ouvert et recliquez sur ce favori.\n" +
+            "• S’il était ouvert : Onlyturgie vient sans doute d’être installé. Rechargez la page (F5), puis recliquez sur ce favori une fois le document chargé.");
         }
       })
       .catch(function (err) {

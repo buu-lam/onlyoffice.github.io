@@ -37,7 +37,7 @@ const MarketplaceStorage = {
     editorType: '',
     filterByCurrentEditor: localStorage.getItem('filter-by-current-editor') === 'true',
     /** @type {CategoryFilter} */
-    categoryFilter: "onlyoffice",
+    categoryFilter: "all",
     /** @type {string} */
     searchQuery: "",
     isSidebarVisible: (localStorage.getItem('sidebar-visible') === 'true') || (window.parent === window),

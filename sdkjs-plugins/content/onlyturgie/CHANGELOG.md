@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.59
+
+- Texte hors contrôle de contenu dans un tableau (ex. nouvelle ligne après Entrée sous un animateur) : source déduite du tag du contrôle de la même cellule, puis de l’en-tête de colonne, au lieu des chants.
+
+## 2.1.58
+
+- Contrôle de contenu à plusieurs noms (un par ligne) : choisir une suggestion ne remplace que la ligne en cours de saisie, les autres noms sont conservés.
+
+## 2.1.57
+
+- Autocomplétion dans un contrôle de contenu : le nom inséré garde la police et la taille du contrôle (plus de retour à la police par défaut du document, Arial Narrow 11).
+
+## 2.1.56
+
+- Tags `lecteur1`, `lecteur2`, `lecteur_pu` → membres du groupe `lecteurs` (contrôles distincts pour le remplissage du menu).
+
+## 2.1.55
+
+- Nouveau groupe `recruteurs-lecteurs` (`/api/contacts-recruteurs-lecteurs`) : autocomplétion de ses membres dans la colonne « Recherche Lecteurs » du tableur.
+
 ## 2.1.54
 
 - Plus d’URL de Document Server de dev (`onlyoffice.test`) codée en dur : `lstjo.panel.documentServerUrl` est vide par défaut ; le panneau utilise l’URL fournie par Liturgie (connecteur OnlyOffice de Nextcloud), sinon celle de l’éditeur qui exécute le plugin (`document.referrer`).

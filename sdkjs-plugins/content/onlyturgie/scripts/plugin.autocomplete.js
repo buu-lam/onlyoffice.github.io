@@ -585,23 +585,113 @@
   function replaceContentControlText(internalId, text) {
     window.Asc.scope.lstjoCcId = internalId;
     window.Asc.scope.lstjoCcText = text;
+    window.Asc.scope.lstjoCcQuery = window.Asc.plugin.lastReplaceTarget || "";
     window.Asc.plugin.callCommand(
       function () {
         var id = Asc.scope.lstjoCcId;
         var txt = Asc.scope.lstjoCcText;
+        var query = String(Asc.scope.lstjoCcQuery || "").trim();
+        /** Lignes du contrôle (un paragraphe ou un saut de ligne = une ligne), sans le texte d'invite. */
+        function controlLines(cc, isInline) {
+          var out = [];
+          if (isInline) {
+            var range = typeof cc.GetRange === "function" ? cc.GetRange() : null;
+            var t = range ? range.GetText({ NewLineSeparator: "\n", ParaSeparator: "\n", TabSymbol: " " }) : "";
+            out = String(t || "").split(/\r\n|\r|\n/);
+          } else {
+            var c = cc.GetContent();
+            for (var k = 0; k < c.GetElementsCount(); k++) {
+              var el = c.GetElement(k);
+              if (el && typeof el.GetText === "function") {
+                out = out.concat(String(el.GetText({ NewLineSeparator: "\n" }) || "").replace(/[\r\n]+$/, "").split(/\r\n|\r|\n/));
+              }
+            }
+          }
+          var ph = typeof cc.GetPlaceholderText === "function" ? String(cc.GetPlaceholderText() || "").trim() : "";
+          return out.filter(function (l) {
+            return !(ph && String(l).trim() === ph);
+          });
+        }
+        /** Index de la ligne tapée (dernière égale à la saisie, sinon dernière qui la contient), -1 si aucune. */
+        function findTypedLine(lines, q) {
+          if (!q) return -1;
+          var lq = q.toLowerCase();
+          for (var a = lines.length - 1; a >= 0; a--) {
+            if (String(lines[a]).trim().toLowerCase() === lq) return a;
+          }
+          for (var c2 = lines.length - 1; c2 >= 0; c2--) {
+            if (String(lines[c2]).toLowerCase().indexOf(lq) !== -1) return c2;
+          }
+          return -1;
+        }
+        // Police et taille du premier run (sinon le texte inséré prend la police par défaut du document).
+        function firstRunFont(container, depth) {
+          if (!container || typeof container.GetElementsCount !== "function" || depth > 2) return null;
+          var n = container.GetElementsCount();
+          for (var k = 0; k < n; k++) {
+            var el = container.GetElement(k);
+            if (!el) continue;
+            if (typeof el.GetTextPr === "function" && typeof el.AddText === "function" && typeof el.GetElementsCount !== "function") {
+              var pr = el.GetTextPr();
+              if (!pr) continue;
+              var size = typeof pr.GetFontSize === "function" ? pr.GetFontSize() : null;
+              var family = typeof pr.GetFontFamily === "function" ? pr.GetFontFamily() : null;
+              if (size || family) return { size: size, family: family };
+            } else {
+              var inner = firstRunFont(el, depth + 1);
+              if (inner) return inner;
+            }
+          }
+          return null;
+        }
+        function styledRun(text, font) {
+          var run = Api.CreateRun();
+          var parts = String(text).split("\n");
+          for (var b = 0; b < parts.length; b++) {
+            if (b > 0) run.AddLineBreak();
+            run.AddText(parts[b]);
+          }
+          if (font) {
+            if (font.size) run.SetFontSize(font.size); // GetFontSize / SetFontSize : demi-points
+            if (font.family) run.SetFontFamily(font.family);
+          }
+          return run;
+        }
         var all = Api.GetDocument().GetAllContentControls() || [];
         for (var i = 0; i < all.length; i++) {
           var cc = all[i];
           if (String(cc.GetInternalId()) !== id) continue;
-          if (cc.GetClassType() === "inlineLvlSdt") {
+          var font = null;
+          try {
+            font = firstRunFont(cc.GetClassType() === "inlineLvlSdt" ? cc : cc.GetContent(), 0);
+          } catch (e) {
+            font = null;
+          }
+          var isInline = cc.GetClassType() === "inlineLvlSdt";
+          // Plusieurs noms (un par ligne) : on ne remplace que la ligne en cours de saisie.
+          var lines = [];
+          try {
+            lines = controlLines(cc, isInline);
+          } catch (e) {
+            lines = [];
+          }
+          var idx = findTypedLine(lines, query);
+          if (idx === -1) lines = [txt];
+          else lines[idx] = txt;
+          lines = lines.filter(function (l) {
+            return String(l).trim() !== "";
+          });
+          if (isInline) {
             cc.RemoveAllElements();
-            cc.AddText(txt);
+            cc.AddElement(styledRun(lines.join("\n"), font), 0);
           } else {
             var content = cc.GetContent();
             content.RemoveAllElements();
-            var p = Api.CreateParagraph();
-            p.AddText(txt);
-            content.Push(p);
+            for (var li = 0; li < lines.length; li++) {
+              var p = Api.CreateParagraph();
+              p.AddElement(styledRun(lines[li], font));
+              content.Push(p);
+            }
           }
           return true;
         }
@@ -714,16 +804,15 @@
           });
           return;
         }
-        // Panneau ouvert : il a déjà lu la cellule — pas de callCommand supplémentaire.
-        var hint = typeof rt.readCursorCellHint === "function" ? rt.readCursorCellHint(3000) : null;
-        if (hint) {
-          showForSource((hint.diapo && findSourceIdByName("diapo")) || getDefaultSourceId());
-          return;
-        }
+        // Hors contrôle (ex. nouvelle ligne après Entrée sous « Anne Leroy ») : tag du contrôle de la cellule,
+        // puis en-tête de colonne (« Animation »), puis « Diapo » à gauche.
         rt.readCursorCellContext(function (ctx) {
           if (seq !== inputEventSeq) return;
-          var diapoId = rt.isDiapoCellLabel(ctx.left) ? findSourceIdByName("diapo") : null;
-          showForSource(diapoId || getDefaultSourceId());
+          var id =
+            parseSourceFromTag(ctx.cellTag || "") ||
+            parseSourceFromTag(ctx.header || "") ||
+            (rt.isDiapoCellLabel(ctx.left) ? findSourceIdByName("diapo") : null);
+          showForSource(id || getDefaultSourceId());
         });
       });
     }

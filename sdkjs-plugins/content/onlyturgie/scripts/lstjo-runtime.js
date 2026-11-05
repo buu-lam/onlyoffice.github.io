@@ -28,7 +28,7 @@
    * Tags de contrôle de contenu → membres du groupe Nextcloud du même nom (GET /api/contacts-{tag}).
    * Prioritaires sur les catalogues homonymes (« pu », « diapo »).
    */
-  var GROUP_TAGS = ["animateurs", "musiciens", "lecteurs", "diapo", "pu", "psaume"];
+  var GROUP_TAGS = ["animateurs", "musiciens", "lecteurs", "diapo", "pu", "psaume", "recruteurs-lecteurs"];
   var GROUP_SOURCE_PREFIX = "groupe:";
 
   var DEFAULT_SOURCE_URL_TEMPLATE = "{apiBase}/{source}?token={token}";
@@ -1125,6 +1125,32 @@
               }
               out.left = parts.join(" ");
             }
+            // Curseur hors contrôle (ex. après Entrée) : tag du contrôle de la même cellule, en-tête de colonne.
+            var own = cell.GetContent();
+            for (var j = 0; j < own.GetElementsCount() && !out.cellTag; j++) {
+              var e2 = own.GetElement(j);
+              if (!e2 || typeof e2.GetClassType !== "function") continue;
+              if (e2.GetClassType() === "blockLvlSdt" && typeof e2.GetTag === "function") {
+                out.cellTag = String(e2.GetTag() || "");
+              } else if (e2.GetClassType() === "paragraph" && typeof e2.GetAllContentControls === "function") {
+                var ccs = e2.GetAllContentControls() || [];
+                if (ccs.length && typeof ccs[0].GetTag === "function") out.cellTag = String(ccs[0].GetTag() || "");
+              }
+            }
+            var row = cell.GetParentRow();
+            var ri = row && typeof row.GetIndex === "function" ? row.GetIndex() : 0;
+            var table = ri > 0 && typeof row.GetParentTable === "function" ? row.GetParentTable() : null;
+            var aboveRow = table ? table.GetRow(ri - 1) : null;
+            var above = aboveRow ? aboveRow.GetCell(idx) : null;
+            if (above) {
+              var ac = above.GetContent();
+              var ap = [];
+              for (var k = 0; k < ac.GetElementsCount(); k++) {
+                var ae = ac.GetElement(k);
+                if (ae && typeof ae.GetText === "function") ap.push(ae.GetText());
+              }
+              out.header = ap.join(" ");
+            }
           }
           return JSON.stringify(out);
         } catch (e) {
@@ -1134,12 +1160,14 @@
       false,
       false,
       function (raw) {
-        var ctx = { text: "", left: "" };
+        var ctx = { text: "", left: "", header: "", cellTag: "" };
         try {
           if (raw) {
             var j = JSON.parse(raw);
             ctx.text = String(j.text || "");
             ctx.left = String(j.left || "");
+            ctx.header = String(j.header || "");
+            ctx.cellTag = String(j.cellTag || "");
           }
         } catch (e2) {
           /* ignore */

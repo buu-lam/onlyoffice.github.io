@@ -1446,7 +1446,9 @@
   }
 
   function setStatus(text) {
-    if (chantStatusEl) chantStatusEl.textContent = text || "";
+    if (!chantStatusEl) return;
+    chantStatusEl.textContent = text || "";
+    chantStatusEl.title = text || "";
   }
 
   function syncCredentialsBar() {

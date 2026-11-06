@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.61
+
+- Autocomplétion : la première suggestion est surlignée dès l’ouverture de la liste et Entrée la valide (avant, Entrée ne faisait rien sans passer par les flèches dès qu’il y avait plusieurs choix, notamment dans le tableur).
+- Tableur (et texte hors contrôle) : « Anne » complété donne « Anne Leroy » et non plus « AnneAnne Leroy » ; quand le choix commence par la saisie, seule la fin est ajoutée, sans effacement (les Retour arrière simulés étaient ignorés après un clic dans la liste). Les noms déjà présents dans la cellule restent intacts.
+
 ## 2.1.60
 
 - Autocomplétion : Entrée sans sélection prend la suggestion si elle est unique ; après validation, la saisie est vidée (plus de réouverture de la liste ni de revalidation du dernier choix à l’Entrée suivante).

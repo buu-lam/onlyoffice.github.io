@@ -802,9 +802,25 @@
     );
   }
 
+  /**
+   * Remplace la saisie `typed` par `chosen` sans toucher au reste (noms déjà présents).
+   * InputText efface la saisie par des Retour arrière simulés, que le tableur ignore quand l'éditeur
+   * n'a plus le focus clavier (clic dans la liste) → « AnneAnne Leroy ». Si le choix commence par la
+   * saisie (même casse), on n'ajoute que la fin : rien à effacer.
+   */
+  function inputReplacingTyped(chosen, typed) {
+    typed = String(typed || "");
+    if (typed && chosen.indexOf(typed) === 0) {
+      var rest = chosen.slice(typed.length);
+      if (rest) window.Asc.plugin.executeMethod("InputText", [rest, ""]);
+      return;
+    }
+    window.Asc.plugin.executeMethod("InputText", [chosen, typed]);
+  }
+
   window.Asc.plugin.inputHelper_onSelectItem = function (item) {
-    // Entrée sans élément surligné (flèches non utilisées) : un seul choix → on le prend.
-    if ((!item || !item.text) && lastShownItems.length === 1) item = lastShownItems[0];
+    // Entrée sans élément surligné (flèches non utilisées) : on prend le premier choix.
+    if ((!item || !item.text) && lastShownItems.length) item = lastShownItems[0];
     if (!item || !item.text) return;
     lastShownItems = [];
     setTimeout(forwardTargetChangedIfPending, 0);
@@ -814,7 +830,7 @@
       var toReplace = window.Asc.plugin.lastReplaceTarget;
       if (toReplace === undefined || toReplace === null) toReplace = getReplaceSegment();
       if (toReplace === "") return;
-      window.Asc.plugin.executeMethod("InputText", [item.text, toReplace]);
+      inputReplacingTyped(item.text, toReplace);
     } else if (activeContentControlId) {
       // Dans un contrôle de contenu : remplacer seulement son contenu (ReplaceCurrentSentence
       // déborde sur la phrase entière autour d’un contrôle inline, ex. « Animateur : [nom] »).
@@ -827,7 +843,7 @@
         var sent = String(sentence || "").trim();
         if (typed && sent && sent.toLowerCase() !== typed.toLowerCase() &&
             sent.toLowerCase().lastIndexOf(typed.toLowerCase()) !== -1) {
-          window.Asc.plugin.executeMethod("InputText", [chosen, typed]);
+          inputReplacingTyped(chosen, typed);
         } else {
           window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [chosen, "entirely"]);
         }
@@ -902,6 +918,14 @@
         }
 
         window.Asc.plugin.getInputHelper().setItems(items);
+        // Premier choix surligné d'emblée : Entrée le valide (la liste ne prend que l'élément « li_selected »,
+        // et sans flèches rien ne l'était → Entrée sans effet, surtout dans le tableur).
+        try {
+          var lis = document.getElementsByTagName("li");
+          for (var k = 0; k < lis.length; k++) lis[k].className = k === 0 ? "li_selected" : "";
+        } catch (e) {
+          /* ignore */
+        }
         lastShownItems = items;
         window.Asc.plugin.lastReplaceTarget = replaceTarget;
         var sizes = getInputHelperSize();

@@ -28,7 +28,7 @@
    * Tags de contrôle de contenu → membres du groupe Nextcloud du même nom (GET /api/contacts-{tag}).
    * Prioritaires sur les catalogues homonymes (« pu », « diapo »).
    */
-  var GROUP_TAGS = ["animateurs", "musiciens", "lecteurs", "diapo", "pu", "psaume", "recruteurs-lecteurs"];
+  var GROUP_TAGS = ["animateurs", "musiciens", "lecteurs", "diapo", "pu", "psaume", "recruteurs-lecture"];
   var GROUP_SOURCE_PREFIX = "groupe:";
 
   var DEFAULT_SOURCE_URL_TEMPLATE = "{apiBase}/{source}?token={token}";

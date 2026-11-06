@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.60
+
+- Autocomplétion : Entrée sans sélection prend la suggestion si elle est unique ; après validation, la saisie est vidée (plus de réouverture de la liste ni de revalidation du dernier choix à l’Entrée suivante).
+- Hors contrôle de contenu (« Anne Leroy, Pi ») : seule la saisie est remplacée, le reste de la phrase est conservé.
+- Contrôle à plusieurs noms : curseur replacé en fin de nom complété, plus de ligne vide parasite en tête, les autres noms ne sont jamais effacés.
+- Groupe `recruteurs-lecteurs` renommé `recruteurs-lecture` (aligné sur Liturgie).
+- Nouvelles icônes.
+
 ## 2.1.59
 
 - Texte hors contrôle de contenu dans un tableau (ex. nouvelle ligne après Entrée sous un animateur) : source déduite du tag du contrôle de la même cellule, puis de l’en-tête de colonne, au lieu des chants.
@@ -18,7 +26,7 @@
 
 ## 2.1.55
 
-- Nouveau groupe `recruteurs-lecteurs` (`/api/contacts-recruteurs-lecteurs`) : autocomplétion de ses membres dans la colonne « Recherche Lecteurs » du tableur.
+- Nouveau groupe `recruteurs-lecture` (`/api/contacts-recruteurs-lecture`) : autocomplétion de ses membres dans la colonne « Recherche Lecteurs » du tableur.
 
 ## 2.1.54
 

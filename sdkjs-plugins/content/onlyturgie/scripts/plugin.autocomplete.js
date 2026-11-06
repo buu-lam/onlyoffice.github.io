@@ -10,6 +10,8 @@
   var inputEventSeq = 0;
   /** InternalId du contrôle de contenu sous le curseur lors de la dernière saisie ("" = hors contrôle). */
   var activeContentControlId = "";
+  /** Dernière liste affichée : Entrée sans sélection prend le choix s'il est unique. */
+  var lastShownItems = [];
 
   function isAutocompleteEnabled() {
     if (window.LstjoRuntime && typeof window.LstjoRuntime.readAutocompleteEnabledPreference === "function") {
@@ -531,6 +533,13 @@
 
       window.Asc.plugin.createInputHelper();
       window.Asc.plugin.getInputHelper().createWindow();
+      // createWindow branche event_onKeyDown sur la navigation de la liste ; avec l'abonnement onKeyDown
+      // l'éditeur envoie aussi les touches liste fermée → chaque Entrée revalidait le dernier choix.
+      var ihKeyDown = window.Asc.plugin.event_onKeyDown;
+      window.Asc.plugin.event_onKeyDown = function (e) {
+        if (!lastShownItems.length) return;
+        if (typeof ihKeyDown === "function") ihKeyDown.call(window.Asc.plugin, e);
+      };
       registerSettingsContextMenu();
       registerSettingsSavedListener();
       registerPanelAutoOpenOnDocument();
@@ -568,7 +577,20 @@
   };
 
   /** Le panneau est une fenêtre enfant : il ne reçoit pas les événements éditeur, on les lui relaie. */
+  /** Relais au panneau différé pendant que la liste est ouverte : ses callCommand la refermeraient. */
+  var targetChangedWhileShown = false;
+  function forwardTargetChangedIfPending() {
+    if (!targetChangedWhileShown) return;
+    targetChangedWhileShown = false;
+    if (window.LstjoRuntime && typeof window.LstjoRuntime.forwardEventToPanelWindow === "function") {
+      window.LstjoRuntime.forwardEventToPanelWindow("onTargetPositionChanged", {});
+    }
+  }
   window.Asc.plugin.event_onTargetPositionChanged = function () {
+    if (lastShownItems.length) {
+      targetChangedWhileShown = true;
+      return;
+    }
     if (window.LstjoRuntime && typeof window.LstjoRuntime.forwardEventToPanelWindow === "function") {
       window.LstjoRuntime.forwardEventToPanelWindow("onTargetPositionChanged", {});
     }
@@ -608,9 +630,13 @@
             }
           }
           var ph = typeof cc.GetPlaceholderText === "function" ? String(cc.GetPlaceholderText() || "").trim() : "";
-          return out.filter(function (l) {
-            return !(ph && String(l).trim() === ph);
-          });
+          return out
+            .map(function (l) {
+              return String(l).replace(/[\t ]+$/, ""); // GetText ajoute une tabulation en fin de contrôle
+            })
+            .filter(function (l) {
+              return !(ph && l.trim() === ph);
+            });
         }
         /** Index de la ligne tapée (dernière égale à la saisie, sinon dernière qui la contient), -1 si aucune. */
         function findTypedLine(lines, q) {
@@ -623,6 +649,16 @@
             if (String(lines[c2]).toLowerCase().indexOf(lq) !== -1) return c2;
           }
           return -1;
+        }
+        /** Remplace seulement la saisie (dernière occurrence) : « Anne Leroy, Pi » → « Anne Leroy, Pierre Martin ». */
+        function replaceTypedPart(line, q, replacement) {
+          if (!q) return replacement;
+          var pos = line.toLowerCase().lastIndexOf(q.toLowerCase());
+          if (pos === -1) return replacement;
+          var after = line.slice(pos + q.length);
+          // Espaces / tabulations de fin renvoyés par GetText : ne pas les recopier après le choix.
+          if (/^\s*$/.test(after)) after = "";
+          return line.slice(0, pos) + replacement + after;
         }
         // Police et taille du premier run (sinon le texte inséré prend la police par défaut du document).
         function firstRunFont(container, depth) {
@@ -676,37 +712,102 @@
             lines = [];
           }
           var idx = findTypedLine(lines, query);
+          var before = lines.slice();
+          if (idx === -1) {
+            // Ligne tapée introuvable : ne jamais effacer les autres noms. Dernier mot de la saisie,
+            // sinon la dernière ligne (le curseur est en fin de saisie), sinon champ vide → le choix seul.
+            var words = query.split(/\s+/).filter(Boolean);
+            var lastWord = words.length ? words[words.length - 1] : "";
+            idx = lastWord ? findTypedLine(lines, lastWord) : -1;
+            if (idx !== -1) query = lastWord;
+          }
+          if (idx === -1 && lines.length) {
+            idx = lines.length - 1;
+            query = "";
+            if (String(lines[idx]).trim() !== "") {
+              lines.push(txt);
+              idx = -2;
+            }
+          }
           if (idx === -1) lines = [txt];
-          else lines[idx] = txt;
+          else if (idx === -2) { /* ajouté en nouvelle ligne */ }
+          else lines[idx] = query ? replaceTypedPart(String(lines[idx]), query, txt) : txt;
+          var debugInfo = { query: query, before: before, idx: idx };
+          // Ligne qui vient d'être complétée : le curseur sera replacé à sa fin.
+          var target = idx >= 0 ? idx : idx === -2 ? lines.length - 1 : 0;
+          var cursorLine = 0;
+          for (var t = 0; t < target; t++) if (String(lines[t]).trim() !== "") cursorLine++;
           lines = lines.filter(function (l) {
             return String(l).trim() !== "";
           });
+          if (cursorLine >= lines.length) cursorLine = Math.max(0, lines.length - 1);
+          var cursorRun = null;
+          var cursorPos = 0;
           if (isInline) {
             cc.RemoveAllElements();
-            cc.AddElement(styledRun(lines.join("\n"), font), 0);
+            cursorRun = styledRun(lines.join("\n"), font);
+            cc.AddElement(cursorRun, 0);
+            // Position dans le run : caractères + un élément par saut de ligne.
+            for (var cl = 0; cl <= cursorLine; cl++) cursorPos += String(lines[cl] || "").length + (cl < cursorLine ? 1 : 0);
           } else {
             var content = cc.GetContent();
             content.RemoveAllElements();
+            // Un contrôle bloc garde un paragraphe vide après RemoveAllElements : le réutiliser pour la
+            // première ligne, sinon le texte arrive après une ligne vide (retour chariot parasite).
+            var leftover = content.GetElementsCount() > 0 ? content.GetElement(0) : null;
+            var reuse = leftover && typeof leftover.AddElement === "function" && typeof leftover.GetText === "function" &&
+              String(leftover.GetText() || "").trim() === "";
             for (var li = 0; li < lines.length; li++) {
+              var run = styledRun(lines[li], font);
+              if (li === cursorLine) {
+                cursorRun = run;
+                cursorPos = String(lines[li]).length;
+              }
+              if (li === 0 && reuse) {
+                if (typeof leftover.RemoveAllElements === "function") leftover.RemoveAllElements();
+                leftover.AddElement(run);
+                continue;
+              }
               var p = Api.CreateParagraph();
-              p.AddElement(styledRun(lines[li], font));
+              p.AddElement(run);
               content.Push(p);
             }
+            // Filet de sécurité : supprimer les paragraphes vides restés en tête.
+            while (content.GetElementsCount() > lines.length) {
+              var first = content.GetElement(0);
+              if (!first || typeof first.GetText !== "function" || String(first.GetText() || "").trim() !== "") break;
+              content.RemoveElement(0);
+            }
           }
-          return true;
+          // Sans ça le curseur reste là où était l'ancien texte (entre deux noms enchaînés).
+          if (cursorRun && typeof cursorRun.MoveCursorToPos === "function") {
+            try {
+              cursorRun.MoveCursorToPos(cursorPos);
+            } catch (e) {
+              /* ignore */
+            }
+          }
+          debugInfo.after = lines;
+          debugInfo.cursor = [cursorLine, cursorPos];
+          return debugInfo;
         }
         return false;
       },
       false,
       true,
       function (found) {
+        if (found && typeof found === "object" && window.console) console.log("[Onlyturgie] autocomplétion contrôle", JSON.stringify(found));
         if (!found) window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [text, "entirely"]);
       }
     );
   }
 
   window.Asc.plugin.inputHelper_onSelectItem = function (item) {
+    // Entrée sans élément surligné (flèches non utilisées) : un seul choix → on le prend.
+    if ((!item || !item.text) && lastShownItems.length === 1) item = lastShownItems[0];
     if (!item || !item.text) return;
+    lastShownItems = [];
+    setTimeout(forwardTargetChangedIfPending, 0);
     var et = window.Asc.plugin.info && window.Asc.plugin.info.editorType;
     if (getCompletionScope() === "word" || et === "cell") {
       // Tableur : pas de ReplaceCurrentSentence ni de contrôle de contenu → InputText remplace la saisie en cours.
@@ -719,19 +820,41 @@
       // déborde sur la phrase entière autour d’un contrôle inline, ex. « Animateur : [nom] »).
       replaceContentControlText(activeContentControlId, item.text);
     } else {
-      window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [item.text, "entirely"]);
+      // Hors contrôle : si la phrase contient plus que la saisie (« Anne Leroy, Pi »), ne remplacer que la saisie.
+      var typed = String(window.Asc.plugin.lastReplaceTarget || "").trim();
+      var chosen = item.text;
+      window.Asc.plugin.executeMethod("GetCurrentSentence", ["entirely"], function (sentence) {
+        var sent = String(sentence || "").trim();
+        if (typed && sent && sent.toLowerCase() !== typed.toLowerCase() &&
+            sent.toLowerCase().lastIndexOf(typed.toLowerCase()) !== -1) {
+          window.Asc.plugin.executeMethod("InputText", [chosen, typed]);
+        } else {
+          window.Asc.plugin.executeMethod("ReplaceCurrentSentence", [chosen, "entirely"]);
+        }
+      });
     }
+    // Saisie consommée : sinon l'Entrée suivante relance la recherche sur l'ancien texte.
+    window.Asc.plugin.fullText = "";
+    window.Asc.plugin.lastReplaceTarget = "";
+    inputEventSeq++;
     window.Asc.plugin.getInputHelper().unShow();
+    // isclear = true : vide aussi le tampon de saisie de l'éditeur (keyPressInput), sinon il renvoie
+    // l'ancien texte au prochain onInputHelperInput et la liste se rouvre.
+    var guid = window.Asc.plugin.info && window.Asc.plugin.info.guid;
+    if (guid) window.Asc.plugin.executeMethod("UnShowInputHelper", [guid, true]);
   };
 
   window.Asc.plugin.event_onInputHelperClear = function () {
     window.Asc.plugin.fullText = "";
     window.Asc.plugin.lastReplaceTarget = "";
+    lastShownItems = [];
+    setTimeout(forwardTargetChangedIfPending, 0);
     window.Asc.plugin.getInputHelper().unShow();
   };
 
   window.Asc.plugin.event_onInputHelperInput = function (data) {
     if (!data) return;
+    if (window.console) console.log("[Onlyturgie] onInputHelperInput", JSON.stringify(data), "fullText=", JSON.stringify(window.Asc.plugin.fullText));
     if (!isAutocompleteEnabled()) {
       hideInputHelperIfDisabled();
       return;
@@ -750,6 +873,8 @@
       // Tableur : un ou plusieurs espaces seuls dans la cellule → liste complète (le clic remplace les espaces).
       var spaceTrigger = isSheet && !query && /^ +$/.test(rawQuery);
       if (!spaceTrigger && query.length < minChars) {
+        lastShownItems = [];
+        setTimeout(forwardTargetChangedIfPending, 0);
         window.Asc.plugin.getInputHelper().unShow();
         return;
       }
@@ -760,8 +885,13 @@
       function showForSource(sourceId) {
         if (seq !== inputEventSeq) return;
         var variants = filterItemsForQuery(sourceId, query);
+        // Texte déjà égal à un choix (nom qui vient d'être validé) : rien à compléter.
+        var lq = query.toLowerCase();
+        if (lq && variants.some(function (v) { return v.toLowerCase() === lq; })) variants = [];
 
         if (!variants.length) {
+          lastShownItems = [];
+          setTimeout(forwardTargetChangedIfPending, 0);
           window.Asc.plugin.getInputHelper().unShow();
           return;
         }
@@ -772,8 +902,11 @@
         }
 
         window.Asc.plugin.getInputHelper().setItems(items);
+        lastShownItems = items;
         window.Asc.plugin.lastReplaceTarget = replaceTarget;
         var sizes = getInputHelperSize();
+        // false : l’éditeur garde le focus ; tant que la liste est ouverte il relaie ↑/↓/Entrée/Échap
+        // au plugin (événement onKeyDown, cf. config.json) sans les appliquer au document.
         window.Asc.plugin.getInputHelper().show(sizes.w, sizes.h, false);
       }
 

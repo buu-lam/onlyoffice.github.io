@@ -1958,6 +1958,7 @@
   var MENU_ACTIONS = {
     partitions: { label: "Récupérer les partitions", path: "/menu/partitions" },
     playlist: { label: "Générer playlist", path: "/menu/playlist" },
+    playlistPptx: { label: "Générer playlist PPTX", path: "/menu/playlist-pptx" },
     diaporama: { label: "Générer diaporama", path: "/menu/diaporama" },
   };
   var menuActionBusy = false;
@@ -2048,8 +2049,8 @@
           " déjà à jour → " +
           (data.folder || "Partitions")
       );
-    } else if (action === "playlist") {
-      parts.push("Playlist : " + (data.items || []).length + " présentation(s) → " + (data.file || "liste_diapos.playlist.txt"));
+    } else if (action === "playlist" || action === "playlistPptx") {
+      parts.push("Playlist : " + (data.items || []).length + " présentation(s) → " + (data.file || ""));
     } else {
       parts.push(
         "Diaporama : " +
@@ -2121,11 +2122,17 @@
       resultSection(body, "Partitions copiées", tagged(data.copied, "result-ok"), "Aucune nouvelle partition");
       resultSection(body, "Déjà présentes", tagged(data.unchanged, "result-info"));
       resultSection(body, "Dossiers sans partition", tagged(data.missing, "result-error"));
-    } else if (action === "playlist") {
-      body.appendChild(el("p", "result-summary", "Fichier : " + (data.file || "liste_diapos.playlist.txt") + " (ANSI)"));
+    } else if (action === "playlist" || action === "playlistPptx") {
+      body.appendChild(el("p", "result-summary", "Fichier : " + (data.file || "") + " (ANSI)"));
+      if (data.bat) {
+        body.appendChild(
+          el("p", "result-summary", "Lanceur : " + data.bat.name + (data.bat.created ? " (créé)" : " (déjà présent)"))
+        );
+      }
       body.appendChild(el("div", "result-section-title", "Aperçu (" + (data.lines || []).length + " ligne(s))"));
       body.appendChild(el("pre", "result-file", (data.lines || []).join("\n") || "(vide)"));
-      resultSection(body, "Chants sans .ppt (non inclus)", tagged(data.missing, "result-error"));
+      var ext = action === "playlistPptx" ? ".pptx" : ".ppt";
+      resultSection(body, "Chants sans " + ext + " (non inclus)", tagged(data.missing, "result-error"));
     } else {
       body.appendChild(
         el("p", "result-summary", "Fichier : " + (data.file || "") + " — " + (data.slides || 0) + " diapositive(s)")

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.62
+
+- Nouveau bouton « Générer playlist PPTX » (3ᵉ du pied de panneau) : `liste_diapos_pptx.playlist.txt` pour pptxview, sans `..` (chemins relatifs au menu, ex. `DiaposX.pptx`, sinon depuis la racine) ; `diapos-pptx.bat` créé s’il manque (nécessite l’app Liturgie à jour).
+
 ## 2.1.61
 
 - Autocomplétion : la première suggestion est surlignée dès l’ouverture de la liste et Entrée la valide (avant, Entrée ne faisait rien sans passer par les flèches dès qu’il y avait plusieurs choix, notamment dans le tableur).

@@ -2,7 +2,7 @@
 
 ## 2.1.62
 
-- Nouveau bouton « Générer playlist PPTX » (3ᵉ du pied de panneau) : `liste_diapos_pptx.playlist.txt` pour pptxview, sans `..` (chemins relatifs au menu, ex. `DiaposX.pptx`, sinon depuis la racine) ; `diapos-pptx.bat` créé s’il manque (nécessite l’app Liturgie à jour).
+- Nouveau bouton « Générer playlist PPTX » (3ᵉ du pied de panneau) : `liste_diapos_pptx.playlist.txt` pour pptxview, sans `..\` (chemins relatifs au menu, ex. `Diapos\X.pptx`, sinon depuis la racine) ; `diapos-pptx.bat` créé s’il manque (nécessite l’app Liturgie à jour).
 
 ## 2.1.61
 
